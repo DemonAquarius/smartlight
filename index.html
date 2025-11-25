@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SmartSwitch — Final UI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg: linear-gradient(180deg,#0f1030 0%, #0b1538 100%);
+  --card: rgba(255,255,255,0.03);
+  --glass: rgba(255,255,255,0.09);
+  --accent1: #7fb1ff;
+  --accent2: #9a6bff;
+  --muted: rgba(255,255,255,0.96);
+  --muted2: rgba(255,255,255,0.55);
+  --nav-height:92px;
+  --max-width:980px;
+  --soft-shadow: 0 10px 30px rgba(13,18,46,0.55);
+  --blur: 8px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;outline:none}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--muted);font-family:Inter,system-ui,Roboto,Arial}
+body{padding:0;margin:0}
+#main{max-width:var(--max-width);margin:14px auto;padding:12px;padding-bottom:calc(var(--nav-height) + 32px)}
+
+/* Header */
+.header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 8px 30px rgba(122,57,255,0.06)}
+.mark img{width:100%;height:100%;object-fit:cover}
+.brand-title{font-size:18px;font-weight:700}
+.brand-sub{font-size:12px;color:var(--muted2)}
+
+/* WiFi round icon */
+.wifi-btn{width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;transition:all .18s}
+.wifi-btn.connected{background:linear-gradient(135deg,#b7f7d4,#7df2a3);box-shadow:0 12px 32px rgba(125,242,163,0.12)}
+.wifi-btn.disconnected{background:linear-gradient(135deg,#ff9a9a,#ff5c5c);box-shadow:0 12px 32px rgba(255,92,92,0.12)}
+.wifi-arc{position:absolute;border-radius:50%;border-top:3px solid rgba(255,255,255,0.95);border-left:3px solid transparent;border-right:3px solid transparent;border-bottom:3px solid transparent;opacity:0.95;animation: wifiPulse 2s infinite ease-in-out}
+.wifi-arc:nth-child(2) { animation-delay: 0.2s; }
+.wifi-arc:nth-child(3) { animation-delay: 0.4s; }
+.wifi-a1{width:14px;height:14px;bottom:8px}
+.wifi-a2{width:24px;height:24px;bottom:3px}
+.wifi-a3{width:34px;height:34px;bottom:-3px}
+.wifi-dot{width:7px;height:7px;background:white;border-radius:50%;position:absolute;bottom:15px}
+.wifi-btn.connected .wifi-arc, .wifi-btn.connected .wifi-dot{animation:pulse 1.8s infinite ease-in-out}
+@keyframes pulse{0%{opacity:1;transform:scale(1)}50%{opacity:.78;transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
+
+/* Instagram-like Logo Animation */
+@keyframes logoEntrance {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes wavePulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes buttonPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  }
+}
+
+@keyframes bulbGlow {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes wifiPulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+}
+
+/* CSS Logo */
+.mark-css {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(122,57,255,0.15);
+  position: relative;
+  animation: logoEntrance 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  opacity: 0;
+}
+
+.logo-icon {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.logo-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid white;
+  animation: logoEntrance 1.2s 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  opacity: 0;
+}
+
+.logo-inner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: logoEntrance 1.2s 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.logo-wave {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: wavePulse 2s infinite ease-out;
+  opacity: 0;
+  animation-delay: 0.6s;
+  animation-fill-mode: forwards;
+}
+
+.logo-wave:nth-child(2) {
+  animation-delay: 0.9s;
+}
+
+.logo-wave:nth-child(3) {
+  animation-delay: 1.2s;
+}
+
+/* Cards */
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.014), rgba(255,255,255,0.008));border-radius:14px;padding:12px;border:1px solid var(--glass);backdrop-filter: blur(var(--blur));box-shadow:var(--soft-shadow);margin-bottom:12px}
+.status-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pres-left{display:flex;align-items:center;gap:8px}
+.pres-dot{width:12px;height:12px;border-radius:50%;background:#2a2a42}
+.pres-dot.on{background:#4ef0a0;box-shadow:0 6px 18px rgba(78,240,160,0.08)}
+.small{font-size:13px;color:var(--muted2)}
+
+/* Lights grid fixed 3-in-row */
+.lights-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:12px;align-items:start}
+.light-block{text-align:center;cursor:pointer}
+.circle{width:86px;height:86px;border-radius:999px;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.06);transition:all .16s}
+.circle:active{transform:translateY(-3px) scale(.98)}
+.bulb{font-size:36px;transition:all .22s;animation: bulbGlow 3s infinite ease-in-out}
+.inner-status{font-size:12px;font-weight:700;color:var(--muted2)}
+.light-block.on .circle{background:linear-gradient(135deg,#fff2c2,#ffd17a);border:1px solid rgba(255,255,255,0.16);box-shadow:0 16px 60px rgba(255,200,100,0.12)}
+.light-block.on .bulb{transform:scale(1.12);filter:brightness(1.55) saturate(1.4);text-shadow:0 8px 22px rgba(255,190,60,0.12);animation: bulbGlow 1.5s infinite ease-in-out}
+.nameBelow{margin-top:8px;font-weight:600;color:var(--muted)}
+
+/* last row center two */
+.last-row{grid-column:1 / -1;display:flex;justify-content:center;gap:18px;padding-top:6px}
+
+/* Modes top */
+.modes-row{display:flex;gap:10px;margin-top:12px}
+.mode{flex:1;padding:10px;border-radius:12px;background:rgba(255,255,255,0.02);text-align:center;cursor:pointer;transition:all .14s}
+.mode:hover{transform:translateY(-4px)}
+.mode.active{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#07213a;box-shadow:0 12px 30px rgba(122,57,255,0.08);font-weight:700}
+.setup-btn{padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,var(--accent1),var(--accent2));border:0;color:#07213a;cursor:pointer;font-weight:700;box-shadow:0 8px 30px rgba(125,150,255,0.06)}
+
+/* bottom navbar */
+#navbar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;width:94%;max-width:var(--max-width);z-index:9999}
+.bottom-nav{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:999px;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.04);width:100%;box-shadow:0 8px 30px rgba(0,0,0,0.6);height:var(--nav-height);backdrop-filter: blur(12px);-webkit-backdrop-filter: blur(12px);}
+.nav-item{flex:1;text-align:center;padding:6px 6px;border-radius:12px;color:var(--muted2);cursor:pointer;transition:all .14s}
+.nav-item.active{color:#07213a;background:linear-gradient(90deg,var(--accent1),var(--accent2));box-shadow:0 12px 30px rgba(125,150,255,0.10)}
+
+/* icons simple shapes */
+.home-icon{width:22px;height:22px;display:block;margin:0 auto;position:relative}
+.home-icon:before{content:"";position:absolute;left:50%;top:0;transform:translateX(-50%);width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:12px solid rgba(255,255,255,0.95)}
+.home-icon:after{content:"";position:absolute;left:50%;top:10px;transform:translateX(-50%);width:18px;height:12px;border:3px solid rgba(255,255,255,0.95);border-top:none;border-radius:3px}
+.clock-icon{width:20px;height:20px;margin:0 auto;border:3px solid rgba(255,255,255,0.95);border-radius:50%;position:relative}
+.clock-icon:after{content:"";position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:2px;height:6px;background:rgba(255,255,255,0.95)}
+.gear-icon{width:18px;height:18px;margin:0 auto;position:relative}
+.gear-ring{width:10px;height:10px;border:3px solid rgba(255,255,255,0.95);border-radius:50%;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+.gear-tooth{position:absolute;width:4px;height:10px;background:rgba(255,255,255,0.95);border-radius:3px;left:50%;top:50%;transform-origin:center -6px}
+.gear-tooth.t1{transform:translate(-50%,-50%) rotate(0deg)}.gear-tooth.t2{transform:translate(-50%,-50%) rotate(45deg)}.gear-tooth.t3{transform:translate(-50%,-50%) rotate(90deg)}.gear-tooth.t4{transform:translate(-50%,-50%) rotate(135deg)}.gear-tooth.t5{transform:translate(-50%,-50%) rotate(180deg)}.gear-tooth.t6{transform:translate(-50%,-50%) rotate(225deg)}.gear-tooth.t7{transform:translate(-50%,-50%) rotate(270deg)}.gear-tooth.t8{transform:translate(-50%,-50%) rotate(315deg)}
+
+/* Modern Tab Icons */
+.home-icon-modern {
+  width: 24px;
+  height: 24px;
+  position: relative;
+  margin: 0 auto;
+}
+
+.home-icon-modern:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 10px solid rgba(255,255,255,0.95);
+}
+
+.home-icon-modern:after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 4px;
+  width: 16px;
+  height: 12px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 2px;
+}
+
+.clock-icon-modern {
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+  border: 2px solid rgba(255,255,255,0.95);
+  border-radius: 50%;
+  position: relative;
+}
+
+.clock-icon-modern:before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 6px;
+  background: rgba(255,255,255,0.95);
+  transform: translate(-50%, -50%);
+}
+
+.clock-icon-modern:after {
+  content: "";
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  width: 6px;
+  height: 2px;
+  background: rgba(255,255,255,0.95);
+  transform: translate(-50%, -50%);
+}
+
+.gear-icon-modern {
+  width: 24px;
+  height: 24px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.gear-icon-modern .gear-outer {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.95);
+  border-radius: 50%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.gear-icon-modern .gear-inner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255,255,255,0.95);
+  border-radius: 50%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.gear-icon-modern .gear-tooth {
+  position: absolute;
+  width: 3px;
+  height: 6px;
+  background: rgba(255,255,255,0.95);
+  left: 50%;
+  top: 106%;
+  transform-origin: center -10px;
+}
+
+.gear-icon-modern .gear-tooth.t1 { transform: translate(-50%, -50%) rotate(0deg); }
+.gear-icon-modern .gear-tooth.t2 { transform: translate(-50%, -50%) rotate(30deg); }
+.gear-icon-modern .gear-tooth.t3 { transform: translate(-50%, -50%) rotate(60deg); }
+.gear-icon-modern .gear-tooth.t4 { transform: translate(-50%, -50%) rotate(90deg); }
+.gear-icon-modern .gear-tooth.t5 { transform: translate(-50%, -50%) rotate(120deg); }
+.gear-icon-modern .gear-tooth.t6 { transform: translate(-50%, -50%) rotate(150deg); }
+.gear-icon-modern .gear-tooth.t7 { transform: translate(-50%, -50%) rotate(180deg); }
+.gear-icon-modern .gear-tooth.t8 { transform: translate(-50%, -50%) rotate(210deg); }
+.gear-icon-modern .gear-tooth.t9 { transform: translate(-50%, -50%) rotate(240deg); }
+.gear-icon-modern .gear-tooth.t10 { transform: translate(-50%, -50%) rotate(270deg); }
+.gear-icon-modern .gear-tooth.t11 { transform: translate(-50%, -50%) rotate(300deg); }
+.gear-icon-modern .gear-tooth.t12 { transform: translate(-50%, -50%) rotate(330deg); }
+
+/* Centered modal styling + blur behind */
+.modal-back{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:1200}
+.modal{width:92%;max-width:520px;background:linear-gradient(180deg,#0f0720,#150926);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.06);box-shadow:0 30px 80px rgba(0,0,0,0.6);backdrop-filter: blur(6px);}
+
+/* mode choices grid */
+.mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mode-chip{padding:10px;border-radius:10px;background:rgba(255,255,255,0.02);cursor:pointer;text-align:center;color:var(--muted2);border:1px solid rgba(255,255,255,0.03)}
+.mode-chip.selected{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#07213a}
+
+/* mode selection */
+.mode-selection{padding:10px;border-radius:10px;background:rgba(255,255,255,0.02);cursor:pointer;text-align:center;color:var(--muted2);border:1px solid rgba(255,255,255,0.03);transition:all 0.2s ease}
+.mode-selection:hover{background:rgba(255,255,255,0.06);transform:translateY(-2px)}
+
+/* settings inner layout improvements (Rename + Tools kept in Settings) */
+.settings-tabs{display:flex;gap:8px;margin-bottom:12px}
+.settings-tab{padding:10px 12px;border-radius:999px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted2);cursor:pointer}
+.settings-tab.active{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#07213a}
+.rename-list{display:grid;grid-template-columns:1fr;gap:8px}
+.rename-row{display:flex;gap:8px;align-items:center}
+.rename-row input{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--muted)}
+
+/* tools actions 2 per row */
+.tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tools-grid button{padding:10px;border-radius:10px;border:0;cursor:pointer;transition:all 0.3s ease;position:relative;overflow:hidden}
+.tools-grid button:active{transform:scale(0.95)}
+.tools-grid button:after{content:"";position:absolute;top:50%;left:50%;width:5px;height:5px;background:rgba(255,255,255,0.5);opacity:0;border-radius:100%;transform:scale(1,1) translate(-50%,-50%);transform-origin:50% 50%}
+.tools-grid button.pressed:after{animation:ripple 0.6s ease-out}
+
+/* Button animations */
+.btn, .ghost, .setup-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.btn:active, .ghost:active, .setup-btn:active {
+  transform: scale(0.95);
+}
+
+.btn:after, .ghost:after, .setup-btn:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255,255,255,0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1,1) translate(-50%,-50%);
+  transform-origin: 50% 50%;
+}
+
+.btn.pressed:after, .ghost.pressed:after, .setup-btn.pressed:after {
+  animation: ripple 0.6s ease-out;
+}
+
+/* Theme-colored buttons */
+.btn {
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  color: #07213a;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 8px 30px rgba(125,150,255,0.06);
+}
+
+.ghost {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--muted);
+}
+
+.setup-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  border: 0;
+  color: #07213a;
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: 0 8px 30px rgba(125,150,255,0.06);
+}
+
+/* Toggle switch */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 30px;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+.toggle input:checked + .slider {
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+}
+
+.toggle input:checked + .slider:before {
+  transform: translateX(30px);
+}
+
+/* logs improved */
+.log-list{max-height:240px;overflow:auto;padding:0;margin:0;list-style:none}
+.log-list li{padding:10px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:13px;color:var(--muted2);line-height:1.35}
+
+@keyframes ripple {
+  0% {transform:scale(0,0);opacity:1}
+  100% {transform:scale(30,30);opacity:0}
+}
+</style>
+</head>
+<body>
+
+<div id="main">
+
+  <!-- header -->
+  <div class="header">
+    <div class="brand">
+      <div class="mark-css">
+        <div class="logo-icon">
+          <div class="logo-circle"></div>
+          <div class="logo-inner"></div>
+          <div class="logo-wave"></div>
+          <div class="logo-wave"></div>
+          <div class="logo-wave"></div>
+        </div>
+      </div>
+      <div>
+        <div class="brand-title">SmartSwitch</div>
+        <div class="brand-sub">Classroom</div>
+      </div>
+    </div>
+
+    <div>
+      <div id="wifiBtn" class="wifi-btn" title="Wi-Fi (open) - click to configure">
+        <div class="wifi-arc wifi-a3"></div>
+        <div class="wifi-arc wifi-a2"></div>
+        <div class="wifi-arc wifi-a1"></div>
+        <div class="wifi-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- presence card -->
+  <div class="card">
+    <div class="status-row">
+      <div class="pres-left">
+        <div id="presDot" class="pres-dot"></div>
+        <div>
+          <div style="font-weight:700">Presence</div>
+          <div id="presText" class="small">No one</div>
+        </div>
+      </div>
+
+      <div style="text-align:right">
+        <div class="small">Last event</div>
+        <div id="lastEvent" class="small">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div id="homePage">
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:8px">Lights</div>
+      <div id="lightsGrid" class="lights-grid"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Modes</div>
+        <button id="openSetup" class="setup-btn">SETUP</button>
+      </div>
+      <div class="modes-row">
+        <div id="modeTeaching" class="mode" data-mode="teaching">Teaching Mode</div>
+        <div id="modeProjector" class="mode" data-mode="projector">Projector Mode</div>
+        <div id="modeEnergy" class="mode" data-mode="energy">Energy Saver</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMER -->
+  <div id="timerPage" style="display:none">
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">Schedules</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="schStart" class="input" type="time">
+        <input id="schEnd" class="input" type="time">
+        <select id="schScene" class="input" style="width:200px"><option value="teaching">Teaching</option><option value="projector">Projector</option><option value="energy">Energy Saver</option></select>
+        <button id="addSchedule" class="btn">Add</button>
+        <button id="clearSchedules" class="ghost">Clear</button>
+      </div>
+      <div id="scheduleList" style="margin-top:10px;max-height:160px;overflow:auto"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3 style="margin:0 0 8px 0">Timers</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="tHours" class="input" type="number" min="0" max="23" placeholder="Hours" style="width:110px">
+        <input id="tMinutes" class="input" type="number" min="0" max="59" placeholder="Minutes" style="width:110px">
+        <input id="tSeconds" class="input" type="number" min="0" max="59" placeholder="Seconds" style="width:110px">
+        <select id="tLight" class="input" style="width:180px"></select>
+        <button id="addTimer" class="btn">Add Timer</button>
+        <button id="clearTimers" class="ghost">Clear</button>
+      </div>
+      <div id="timersList" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="settingsPage" style="display:none">
+    <div class="card">
+      <div class="settings-tabs">
+        <div class="settings-tab active" data-tab="tabSensors">Sensors</div>
+        <div class="settings-tab" data-tab="tabRename">Rename Lights</div>
+        <div class="settings-tab" data-tab="tabTools">Tools</div>
+      </div>
+
+      <div id="tabSensors">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="icon-circle">👤</div>
+            <div>
+              <div style="font-weight:700">PIR Sensor</div>
+              <div class="small">Motion trigger / Entry</div>
+            </div>
+          </div>
+          <label class="toggle"><input id="pirToggle" type="checkbox"><span class="slider"></span></label>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="icon-circle">📡</div>
+            <div>
+              <div style="font-weight:700">RCWL Radar</div>
+              <div class="small">Microwave presence detection</div>
+            </div>
+          </div>
+          <label class="toggle"><input id="rcwlToggle" type="checkbox"><span class="slider"></span></label>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <div style="flex:1" class="card">
+            <div style="font-weight:700">PIR Settings</div>
+            <div class="small" style="margin-top:8px">Delay (seconds)</div>
+            <input id="pirDelay" class="input" type="number" min="0" placeholder="e.g. 10" />
+          </div>
+
+          <div style="flex:1" class="card">
+            <div style="font-weight:700">RCWL Settings</div>
+            <div class="small" style="margin-top:8px">Range (%)</div>
+            <input id="rcwlRange" type="range" min="0" max="100" value="70" style="width:100%" />
+            <div id="rcwlVal" class="small" style="margin-top:6px">70%</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tabRename" style="display:none">
+        <h3 style="margin-top:0">Rename Lights</h3>
+        <div id="renameList" class="rename-list" style="margin-top:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="saveRename" class="btn">Save</button>
+          <button id="resetNames" class="ghost">Reset Defaults</button>
+        </div>
+      </div>
+
+      <div id="tabTools" style="display:none">
+        <h3 style="margin-top:0">Tools & Quick Actions</h3>
+        <div class="tools-grid" style="margin-top:8px">
+          <button id="simEnter" class="btn">Simulate Enter</button>
+          <button id="simLeave" class="ghost">Simulate Leave</button>
+          <button id="clearOverrides" class="ghost">Clear Manual Overrides</button>
+          <button id="applyEnergyNow" class="ghost">Apply Energy Saver</button>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div style="font-weight:600;margin-bottom:8px">Logs (latest 10)</div>
+          <ul id="logs" class="log-list"></ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div> <!-- end main -->
+
+<!-- bottom navbar -->
+<div id="navbar">
+  <div class="bottom-nav" role="navigation">
+    <div class="nav-item active" data-page="home"><div class="home-icon-modern"></div><div style="margin-top:8px;font-size:13px">Home</div></div>
+    <div class="nav-item" data-page="timer"><div class="clock-icon-modern"></div><div style="margin-top:8px;font-size:13px">Timer</div></div>
+    <div class="nav-item" data-page="settings"><div class="gear-icon-modern"><div class="gear-outer"></div><div class="gear-inner"></div><div class="gear-tooth t1"></div><div class="gear-tooth t2"></div><div class="gear-tooth t3"></div><div class="gear-tooth t4"></div><div class="gear-tooth t5"></div><div class="gear-tooth t6"></div><div class="gear-tooth t7"></div><div class="gear-tooth t8"></div><div class="gear-tooth t9"></div><div class="gear-tooth t10"></div><div class="gear-tooth t11"></div><div class="gear-tooth t12"></div></div><div style="margin-top:8px;font-size:13px">Settings</div></div>
+  </div>
+</div>
+
+<!-- Centered Mode Setup modal -->
+<div id="modeModal" class="modal-back">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:700" id="modeModalTitle">Mode Setup</div>
+      <button id="closeMode" class="ghost">Close</button>
+    </div>
+    <div style="margin-top:12px" class="mode-grid" id="modeModalGrid"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+      <button id="modeSaveBtn" class="btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Centered Wi-Fi modal -->
+<div id="wifiModal" class="modal-back">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:700">Wi-Fi Hotspot</div>
+      <div id="wifiStatusText" class="small">Not connected</div>
+    </div>
+
+    <div style="margin-top:12px">
+      <div class="small">SSID</div>
+      <input id="ssid" class="input" placeholder="SSID">
+      <div class="small" style="margin-top:8px">Password</div>
+      <input id="wpass" class="input" placeholder="Password">
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="connectWifi" class="btn">Connect</button>
+      <button id="disconnectWifi" class="ghost">Disconnect</button>
+      <button id="closeWifi" class="ghost">Close</button>
+      <button id="scanWifi" class="ghost">Scan</button>
+    </div>
+
+    <div id="wifiList" class="wifi-list" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- State & helpers ---------- */
+const STORAGE = 'smart_ui_final_v1';
+function defaultState(){
+  const names = ["Front Light","Board Light","Left Wall","Right Wall","Center 1","Center 2","Back Left","Back Right"];
+  return {
+    lights: names.map((n,i)=>({id:i,name:n,on:false,manual:false})),
+    modeProjector: Array(8).fill(false),
+    modeEnergy: Array(8).fill(false),
+    presence:false,pir:true,rcwl:true,pirDelay:5,rcwlRange:70,
+    schedules:[],timers:[],logs:[],wifiConnected:false
+  };
+}
+let state = (()=>{ try{ const r = localStorage.getItem(STORAGE); return r? JSON.parse(r): defaultState(); }catch(e){ return defaultState(); } })();
+function saveState(){ localStorage.setItem(STORAGE, JSON.stringify(state)); }
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function log(msg){ state.logs.unshift(new Date().toLocaleString() + ' — ' + msg); if(state.logs.length>800) state.logs.length=800; saveState(); renderLogs(true); }
+function vibr(ms=6){ if(navigator.vibrate) navigator.vibrate(ms); }
+
+/* ---------- Render functions ---------- */
+function renderLights(){
+  const grid = $('#lightsGrid'); grid.innerHTML='';
+  state.lights.slice(0,6).forEach(l=>{
+    const el = document.createElement('div'); el.className = 'light-block' + (l.on? ' on':'');
+    el.innerHTML = `<div class="circle" data-id="${l.id}"><div class="bulb">💡</div><div class="inner-status">${l.on?'ON':'OFF'}</div></div><div class="nameBelow">${escapeHtml(l.name)}</div>`;
+    el.querySelector('.circle').addEventListener('click', ()=> toggleLight(l.id));
+    el.querySelector('.circle').addEventListener('contextmenu', e=>{ e.preventDefault(); renamePrompt(l.id); });
+    grid.appendChild(el);
+  });
+  const lastRow = document.createElement('div'); lastRow.className='last-row';
+  state.lights.slice(6).forEach(l=>{
+    const el = document.createElement('div'); el.className = 'light-block' + (l.on? ' on':'');
+    el.innerHTML = `<div class="circle" data-id="${l.id}"><div class="bulb">💡</div><div class="inner-status">${l.on?'ON':'OFF'}</div></div><div class="nameBelow">${escapeHtml(l.name)}</div>`;
+    el.querySelector('.circle').addEventListener('click', ()=> toggleLight(l.id));
+    el.querySelector('.circle').addEventListener('contextmenu', e=>{ e.preventDefault(); renamePrompt(l.id); });
+    lastRow.appendChild(el);
+  });
+  grid.appendChild(lastRow);
+  $('#presDot').classList.toggle('on', !!state.presence);
+  $('#presText').textContent = state.presence ? 'Someone' : 'No one';
+  saveState();
+}
+
+function toggleLight(id){
+  vibr(); const idx = state.lights.findIndex(x=>x.id===id); if(idx===-1) return;
+  state.lights[idx].on = !state.lights[idx].on; state.lights[idx].manual = true;
+  $('#lastEvent').textContent = `${state.lights[idx].name} ${state.lights[idx].on ? 'ON':'OFF'}`; log(`${state.lights[idx].name} ${state.lights[idx].on ? 'ON':'OFF'}`); saveState(); renderLights();
+}
+
+function renamePrompt(id){
+  const cur = state.lights.find(x=>x.id===id).name; const v = prompt('Rename light', cur);
+  if(v!==null && v.trim()!==''){ state.lights[id].name = v.trim(); log(`Renamed light ${id+1} → ${v.trim()}`); saveState(); renderLights(); renderRenameList(); populateTimerSelect(); }
+}
+
+/* Modes */
+$('#modeTeaching').addEventListener('click', function() { 
+  addButtonAnimation('modeTeaching');
+  state.lights.forEach(l=> l.on = true); log('Teaching Mode applied (all ON)'); saveState(); renderLights(); 
+});
+$('#modeProjector').addEventListener('click', function() { 
+  addButtonAnimation('modeProjector');
+  applyMode('projector'); 
+});
+$('#modeEnergy').addEventListener('click', function() { 
+  addButtonAnimation('modeEnergy');
+  applyMode('energy'); 
+});
+function applyMode(mode){
+  if(mode==='projector'){ state.lights.forEach((l,i)=> l.on = !!state.modeProjector[i]); log('Projector Mode applied'); }
+  if(mode==='energy'){ state.lights.forEach((l,i)=> l.on = !!state.modeEnergy[i]); log('Energy Saver applied'); }
+  saveState(); renderLights();
+}
+
+/* Mode setup modal center */
+$('#openSetup').addEventListener('click', function() {
+  addButtonAnimation('openSetup');
+  openModeSelectionModal();
+});
+
+function openModeSelectionModal() {
+  $('#modeModal').style.display = 'flex';
+  $('#modeModalTitle').textContent = 'Select Mode to Setup';
+  const grid = $('#modeModalGrid');
+  grid.innerHTML = `
+    <div class="mode-selection" data-mode="projector">
+      <div class="mode-chip">Projector Mode</div>
+    </div>
+    <div class="mode-selection" data-mode="energy">
+      <div class="mode-chip">Energy Saver</div>
+    </div>
+  `;
+  
+  // Add event listeners to mode selection
+  $$('.mode-selection').forEach(el => {
+    el.addEventListener('click', () => {
+      const mode = el.dataset.mode;
+      openModeModal(mode);
+    });
+  });
+  
+  document.body.style.overflow='hidden';
+}
+function openModeModal(mode){
+  $('#modeModal').style.display = 'flex';
+  $('#modeModalTitle').textContent = `Select lights for ${mode[0].toUpperCase()+mode.slice(1)} Mode`;
+  $('#modeModal').dataset.mode = mode;
+  const grid = $('#modeModalGrid'); grid.innerHTML = '';
+  const arr = mode === 'projector' ? state.modeProjector : state.modeEnergy;
+  state.lights.forEach((l,i)=>{
+    const d = document.createElement('div'); d.className = 'mode-chip' + (arr[i] ? ' selected':'' ); d.textContent = l.name; d.dataset.i = i;
+    d.addEventListener('click', ()=> d.classList.toggle('selected'));   
+    grid.appendChild(d);
+  });
+  document.body.style.overflow='hidden';
+}
+$('#closeMode').addEventListener('click', function() { 
+  addButtonAnimation('closeMode');
+  $('#modeModal').style.display='none'; document.body.style.overflow=''; 
+});
+$('#modeSaveBtn').addEventListener('click', function() {
+  addButtonAnimation('modeSaveBtn');
+  const mode = $('#modeModal').dataset.mode || 'projector';
+  const sel = Array.from($('#modeModalGrid').querySelectorAll('.mode-chip.selected')).map(x=>+x.dataset.i);
+  if(mode==='projector') state.modeProjector = state.modeProjector.map((v,i)=> sel.includes(i));
+  else state.modeEnergy = state.modeEnergy.map((v,i)=> sel.includes(i));
+  log(`${mode} saved`); saveState(); $('#modeModal').style.display='none'; document.body.style.overflow='';
+});
+
+/* Schedules & Timers */
+$('#addSchedule').addEventListener('click', function() {
+  addButtonAnimation('addSchedule');
+  const s = $('#schStart').value, e = $('#schEnd').value, sc = $('#schScene').value;
+  if(!s || !e){ alert('Pick start and end'); return; }
+  state.schedules.push({start:s,end:e,scene:sc}); saveState(); renderSchedules(); log('Schedule added '+s+'-'+e+' '+sc);
+});
+$('#clearSchedules').addEventListener('click', function() { 
+  addButtonAnimation('clearSchedules');
+  if(!confirm('Clear schedules?')) return; state.schedules=[]; saveState(); renderSchedules(); log('Schedules cleared'); 
+});
+function renderSchedules(){ const out = $('#scheduleList'); out.innerHTML=''; state.schedules.forEach((s,i)=>{ const r = document.createElement('div'); r.style.padding='8px'; r.style.borderBottom='1px solid rgba(255,255,255,0.03)'; r.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${escapeHtml(s.start)}</strong> → <strong>${escapeHtml(s.end)}</strong> • ${escapeHtml(s.scene)}</div><div><button data-del="${i}" class="ghost">Delete</button></div></div>`; out.appendChild(r); }); $$('[data-del]').forEach(b=> b.onclick = e=> { const i = +e.target.dataset.del; addButtonAnimation(e.target.id || 'deleteSchedule'); state.schedules.splice(i,1); saveState(); renderSchedules(); log('Schedule removed'); }); }
+
+$('#addTimer').addEventListener('click', function() {
+  addButtonAnimation('addTimer');
+  const h = Math.max(0, parseInt($('#tHours').value||0)), m = Math.max(0, parseInt($('#tMinutes').value||0)), s = Math.max(0, parseInt($('#tSeconds').value||0)), lid = parseInt($('#tLight').value||0);
+  if(h===0 && m===0 && s===0){ alert('Set duration'); return; }
+  const name = state.lights[lid].name;
+  state.timers.push({name,h,m,s,light:lid,created:Date.now()}); saveState(); renderTimers(); log(`Timer set: ${name} ${h}h ${m}m ${s}s`);
+});
+$('#clearTimers').addEventListener('click', function() { 
+  addButtonAnimation('clearTimers');
+  if(!confirm('Clear timers?')) return; state.timers=[]; saveState(); renderTimers(); log('Cleared timers'); 
+});
+function renderTimers(){ const area = $('#timersList'); area.innerHTML=''; state.timers.forEach((t,i)=>{ const d = document.createElement('div'); d.className='card'; d.style.display='flex'; d.style.justifyContent='space-between'; d.style.alignItems='center'; d.style.marginBottom='8px'; d.innerHTML = `<div><strong>${escapeHtml(t.name)}</strong><div class="small">${t.h}h ${t.m}m ${t.s}s</div></div><div><button data-deltimer="${i}" class="ghost">Remove</button></div>`; area.appendChild(d); }); $$('[data-deltimer]').forEach(b=> b.onclick = e=> { const i=+e.target.dataset.deltimer; addButtonAnimation(e.target.id || 'deleteTimer'); state.timers.splice(i,1); saveState(); renderTimers(); log('Timer removed'); }); }
+
+/* Sensors & Tools (kept in Settings) */
+$('#pirToggle').addEventListener('change', e=>{ state.pir = !!e.target.checked; saveState(); log('PIR ' + (state.pir?'enabled':'disabled')); });
+$('#rcwlToggle').addEventListener('change', e=>{ state.rcwl = !!e.target.checked; saveState(); log('RCWL ' + (state.rcwl?'enabled':'disabled')); });
+$('#pirDelay').addEventListener('input', e=>{ state.pirDelay = parseInt(e.target.value) || 0; saveState(); });
+$('#rcwlRange').addEventListener('input', e=>{ state.rcwlRange = parseInt(e.target.value); $('#rcwlVal').textContent = state.rcwlRange + '%'; saveState(); });
+
+function addButtonAnimation(buttonId) {
+  const btn = $(`#${buttonId}`);
+  if (btn) {
+    btn.classList.add('pressed');
+    setTimeout(() => btn.classList.remove('pressed'), 600);
+  }
+}
+
+$('#simEnter').addEventListener('click', function(){ 
+  addButtonAnimation('simEnter');
+  state.presence=true; $('#presDot').classList.add('on'); $('#presText').textContent='Someone'; log('Simulated Enter'); saveState(); 
+});
+$('#simLeave').addEventListener('click', function(){ 
+  addButtonAnimation('simLeave');
+  state.presence=false; $('#presDot').classList.remove('on'); $('#presText').textContent='No one'; log('Simulated Leave'); saveState(); 
+});
+$('#clearOverrides').addEventListener('click', function(){ 
+  addButtonAnimation('clearOverrides');
+  state.lights.forEach(l=> l.manual=false); saveState(); renderLights(); log('Cleared manual overrides'); 
+});
+$('#applyEnergyNow').addEventListener('click', function(){ 
+  addButtonAnimation('applyEnergyNow');
+  state.lights.forEach((l,i)=> l.on = !!state.modeEnergy[i]); saveState(); renderLights(); log('Energy applied'); 
+});
+
+/* Rename list UI inside settings (no modal) */
+function renderRenameList(){ const wrap = $('#renameList'); wrap.innerHTML=''; state.lights.forEach(l=>{ const row = document.createElement('div'); row.className='rename-row'; row.innerHTML = `<div style="width:28px">${l.id+1}.</div><input data-rename="${l.id}" value="${escapeHtml(l.name)}">`; wrap.appendChild(row); }); }
+$('#saveRename').addEventListener('click', function(){ 
+  addButtonAnimation('saveRename');
+  $$('input[data-rename]').forEach(inp=>{ const id = +inp.dataset.rename; const v = inp.value.trim(); if(v) state.lights[id].name = v; }); saveState(); renderLights(); renderRenameList(); populateTimerSelect(); log('Saved light names'); 
+});
+$('#resetNames').addEventListener('click', function(){ 
+  addButtonAnimation('resetNames');
+  if(!confirm('Reset defaults?')) return; state = defaultState(); saveState(); initUI(); log('Reset to defaults'); 
+});
+
+/* Logs render (latest 10) */
+function renderLogs(autoScroll){ const ul = $('#logs'); ul.innerHTML=''; state.logs.slice(0,10).forEach(l=>{ const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); }); if(autoScroll) { ul.scrollTop = 0; } }
+
+/* Wi-Fi modal (center) - demo */
+$('#wifiBtn').addEventListener('click', function() { 
+  addButtonAnimation('wifiBtn');
+  $('#wifiModal').style.display='flex'; document.body.style.overflow='hidden'; 
+});
+$('#closeWifi').addEventListener('click', function() { 
+  addButtonAnimation('closeWifi');
+  $('#wifiModal').style.display='none'; document.body.style.overflow=''; 
+});
+$('#scanWifi').addEventListener('click', function() {
+  addButtonAnimation('scanWifi');
+  const list = $('#wifiList'); list.innerHTML = '<div class="small">Scanning…</div>';
+  setTimeout(()=>{ list.innerHTML=''; ['LAB_WIFI','TeacherHotspot_5G','Office_2.4GHz','MobileHotspot','Guest_WiFi','Extra_AP'].slice(0,5).forEach(n=>{ const r = document.createElement('div'); r.className='wifi-item'; r.innerHTML = `<div>${n}</div><div class="small">${-40 - Math.floor(Math.random()*30)} dBm</div>`; r.addEventListener('click', ()=> $('#ssid').value = n); list.appendChild(r); }); },600);
+});
+$('#connectWifi').addEventListener('click', function() { 
+  addButtonAnimation('connectWifi');
+  const s = $('#ssid').value.trim(); if(!s){ alert('Enter SSID'); return; } $('#wifiStatusText').textContent = 'Connecting…'; setTimeout(()=>{ $('#wifiStatusText').textContent = 'Connected'; $('#wifiBtn').classList.add('connected'); $('#wifiBtn').classList.remove('disconnected'); state.wifiConnected=true; saveState(); log('Wi-Fi connected: '+s); $('#wifiModal').style.display='none'; document.body.style.overflow=''; },900); 
+});
+
+$('#disconnectWifi').addEventListener('click', function() { 
+  addButtonAnimation('disconnectWifi');
+  $('#wifiStatusText').textContent = 'Disconnecting…'; setTimeout(()=>{ $('#wifiStatusText').textContent = 'Not connected'; $('#wifiBtn').classList.remove('connected'); $('#wifiBtn').classList.add('disconnected'); state.wifiConnected=false; saveState(); log('Wi-Fi disconnected'); $('#wifiModal').style.display='none'; document.body.style.overflow=''; },900); 
+});
+
+/* Nav switching */
+$$('.nav-item').forEach(function(it) {
+  it.addEventListener('click', function() {
+    $$('.nav-item').forEach(function(x) {
+      x.classList.remove('active');
+    });
+    it.classList.add('active');
+    const p = it.dataset.page;
+    $('#homePage').style.display = p==='home' ? 'block':'none';
+    $('#timerPage').style.display = p==='timer' ? 'block':'none';
+    $('#settingsPage').style.display = p==='settings' ? 'block':'none';
+  });
+});
+
+/* Settings tab switching */
+$$('.settings-tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    // Remove active class from all tabs
+    $$('.settings-tab').forEach(function(t) {
+      t.classList.remove('active');
+    });
+    // Add active class to clicked tab
+    tab.classList.add('active');
+    
+    // Hide all tab content
+    $('#tabSensors').style.display = 'none';
+    $('#tabRename').style.display = 'none';
+    $('#tabTools').style.display = 'none';
+    
+    // Show the corresponding tab content
+    const tabId = tab.dataset.tab;
+    if (tabId === 'tabSensors') $('#tabSensors').style.display = 'block';
+    else if (tabId === 'tabRename') $('#tabRename').style.display = 'block';
+    else if (tabId === 'tabTools') $('#tabTools').style.display = 'block';
+  });
+});
+
+/* Populate timer select */
+function populateTimerSelect(){ const sel = $('#tLight'); sel.innerHTML=''; state.lights.forEach(l=>{ const o = document.createElement('option'); o.value = l.id; o.textContent = l.name; sel.appendChild(o); }); }
+
+/* Auto demo sensors triggers */
+setInterval(()=>{ if(state.rcwl && Math.random()>0.86){ state.presence=true; $('#presDot').classList.add('on'); $('#presText').textContent='Someone'; log('RCWL detected'); saveState(); } if(state.presence && Math.random()>0.995){ state.presence=false; $('#presDot').classList.remove('on'); $('#presText').textContent='No one'; log('Auto cleared presence'); saveState(); } },6000);
+
+/* close modals when clicking backdrop */
+$$('.modal-back').forEach(m=> m.addEventListener('click', ev=> { if(ev.target === m){ addButtonAnimation(m.id || 'modalClose'); m.style.display='none'; document.body.style.overflow=''; } }));
+
+/* ESC close */
+document.addEventListener('keydown', e=> { if(e.key==='Escape'){ $$('.modal-back').forEach(m=> m.style.display='none'); document.body.style.overflow=''; } });
+
+/* Init UI */
+function initUI(){ renderLights(); renderRenameList(); renderSchedules(); renderTimers(); renderLogs(); populateTimerSelect(); if(state.wifiConnected) { $('#wifiBtn').classList.add('connected'); $('#wifiBtn').classList.remove('disconnected'); } else { $('#wifiBtn').classList.add('disconnected'); $('#wifiBtn').classList.remove('connected'); } $('#pirToggle').checked = !!state.pir; $('#rcwlToggle').checked = !!state.rcwl; $('#pirDelay').value = state.pirDelay; $('#rcwlRange').value = state.rcwlRange; $('#rcwlVal').textContent = state.rcwlRange + '%'; }
+
+// Trigger logo animation on page load
+window.addEventListener('DOMContentLoaded', function() {
+  const logo = document.querySelector('.mark-css');
+  if (logo) {
+    // Animation is already handled by CSS
+    // Just ensure elements are visible for the animation
+    setTimeout(() => {
+      const elements = logo.querySelectorAll('.logo-circle, .logo-inner, .logo-wave');
+      elements.forEach(el => {
+        el.style.opacity = '1';
+      });
+    }, 100);
+  }
+});
+
+initUI();
+</script>
+
+<!-- ========= Injected ESP connection + WiFi API JS (must be after initUI) ========= -->
+<script>
+/* SmartLight ESP connector — auto-discover + WiFi API + WebSocket handlers
+   - Tries: ws://smartlight.local/ws -> ws://<sta_ip>/ws -> ws://192.168.4.1/ws
+   - Uses REST endpoints: /api/wifi/scan, /api/wifi/connect, /api/wifi/status, /api/wifi/forget
+   - If WS connects, updates UI state using messages from ESP
+   - This script is safe to include when UI runs from GitHub Pages
+*/
+
+// Primary hosts (mDNS + AP fallback)
+const MDNS_HOST = 'smartlight.local';
+const AP_HOST = '192.168.4.1';
+
+// current socket
+let socket = null;
+let socketReady = false;
+let lastTried = [];
+
+// small helper - try to connect ws to host
+function tryWsHost(host, timeout=1200) {
+  return new Promise((resolve) => {
+    try {
+      const url = `ws://${host}/ws`;
+      const ws = new WebSocket(url);
+      let done = false;
+      const tidy = (ok) => { if(done) return; done=true; if(ok) resolve({ok:true, ws}); else resolve({ok:false}); };
+      ws.onopen = () => tidy(true);
+      ws.onerror = () => tidy(false);
+      ws.onclose = () => { if(!done) tidy(false); };
+      setTimeout(()=> tidy(false), timeout);
+    } catch(e) { resolve({ok:false}); }
+  });
+}
+
+// Attempt to connect in order: mDNS -> discovered STA -> AP
+async function tryConnectWebSocket() {
+  // if already connected, return
+  if (socket && socketReady) return true;
+
+  // 1) try mDNS
+  try {
+    console.debug('Trying mDNS host', MDNS_HOST);
+    const r = await tryWsHost(MDNS_HOST, 1200);
+    if (r.ok) {
+      useSocket(r.ws, MDNS_HOST);
+      return true;
+    }
+  } catch(e){ console.warn('mDNS try failed', e); }
+
+  // 2) try to discover sta IP via wifi status on mDNS or AP host
+  try {
+    const info = await tryFetchAny('/api/wifi/status');
+    if (info && info.sta_connected && info.sta_ip) {
+      try {
+        const r2 = await tryWsHost(info.sta_ip, 1200);
+        if (r2.ok) { useSocket(r2.ws, info.sta_ip); return true; }
+      } catch(e){ /* ignore */ }
+    }
+  } catch(e) { /* ignore */ }
+
+  // 3) try AP fallback
+  try {
+    console.debug('Trying AP host', AP_HOST);
+    const r3 = await tryWsHost(AP_HOST, 1200);
+    if (r3.ok) { useSocket(r3.ws, AP_HOST); return true; }
+  } catch(e){ /* ignore */ }
+
+  console.warn('All WS attempts failed');
+  return false;
+}
+
+function useSocket(ws, host) {
+  if (socket) {
+    try { socket.close(); } catch(e){}
+  }
+  socket = ws;
+  socketReady = true;
+  console.log('WebSocket connected to', host);
+  socket.onmessage = (ev) => handleWsMessage(ev.data);
+  socket.onclose = () => { socketReady = false; console.log('WS closed'); setTimeout(()=> tryConnectWebSocket(), 1000); };
+  socket.onerror = (e) => { socketReady = false; console.warn('WS error', e); };
+  // request state
+  setTimeout(()=> {
+    try { socket.send(JSON.stringify({cmd:'getState'})); } catch(e){}
+  }, 300);
+}
+
+function handleWsMessage(raw) {
+  try {
+    const d = JSON.parse(raw);
+    // update UI (lights)
+    if (Array.isArray(d.lights)) {
+      d.lights.forEach(l => {
+        const id = l.id;
+        const circle = document.querySelector(`.circle[data-id="${id}"]`);
+        if (circle) {
+          const parent = circle.closest('.light-block');
+          if (l.on) parent.classList.add('on'); else parent.classList.remove('on');
+          const inner = circle.querySelector('.inner-status');
+          if (inner) inner.textContent = l.on ? 'ON' : 'OFF';
+          const nameEl = parent.querySelector('.nameBelow');
+          if (nameEl && nameEl.textContent !== l.name) nameEl.textContent = l.name;
+          // also update local state store
+          const ls = state.lights.find(x => x.id === id);
+          if (ls) { ls.on = !!l.on; ls.name = l.name; ls.manual = !!l.manual; }
+        }
+      });
+    }
+    if (typeof d.presence !== 'undefined') {
+      document.getElementById('presDot').classList.toggle('on', !!d.presence);
+      document.getElementById('presText').textContent = d.presence ? 'Someone' : 'No one';
+      state.presence = !!d.presence;
+      saveState();
+    }
+    if (typeof d.pirEnabled !== 'undefined') { document.getElementById('pirToggle').checked = !!d.pirEnabled; state.pir = !!d.pirEnabled; saveState(); }
+    if (typeof d.rcwlEnabled !== 'undefined') { document.getElementById('rcwlToggle').checked = !!d.rcwlEnabled; state.rcwl = !!d.rcwlEnabled; saveState(); }
+    // logs and other values can be mapped similarly
+  } catch(e) {
+    console.warn('Invalid WS message', e);
+  }
+}
+
+// fetch helper that tries hosts (mDNS -> AP)
+async function tryFetchAny(path, opts) {
+  const hosts = [MDNS_HOST, AP_HOST];
+  for (const h of hosts) {
+    try {
+      const url = `http://${h}${path}`;
+      const r = await fetch(url, opts);
+      if (r.ok) {
+        try { return await r.json(); } catch(e) { return {}; }
+      }
+    } catch(e) { /* try next */ }
+  }
+  throw new Error('All hosts failed');
+}
+
+// Public helper used by UI code: send toggle using WS, fallback to /api (if needed)
+function sendToggleWS(id) {
+  const msg = JSON.stringify({cmd:'toggle', id});
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(msg);
+  } else {
+    // fallback: attempt simple REST (not implemented for toggle in ESP default) - we keep WS as primary
+    console.warn('WS not connected; toggle not sent');
+  }
+}
+
+/* Attach UI interactions to use WS instead of local-only functions */
+function attachUIActions() {
+  // override circle click behavior to use WS
+  document.querySelectorAll('.circle').forEach(c => {
+    c.replaceWith(c.cloneNode(true)); // remove previous listeners then rebind
+  });
+  document.querySelectorAll('.circle').forEach(c => {
+    c.addEventListener('click', e => {
+      const id = parseInt(c.dataset.id, 10);
+      sendToggleWS(id);
+    });
+    c.addEventListener('contextmenu', e => { e.preventDefault(); const id = parseInt(c.dataset.id, 10); renamePrompt(id); });
+  });
+
+  // WiFi modal buttons - override to call ESP API with fallback
+  const scanBtn = document.getElementById('scanWifi');
+  const connectBtn = document.getElementById('connectWifi');
+  const disconnectBtn = document.getElementById('disconnectWifi');
+
+  if (scanBtn) scanBtn.addEventListener('click', async function() {
+    this.classList.add('pressed');
+    try {
+      const json = await tryFetchAny('/api/wifi/scan');
+      const list = document.getElementById('wifiList');
+      list.innerHTML = '';
+      (json.networks || []).forEach(n => {
+        const r = document.createElement('div'); r.className='wifi-item';
+        r.innerHTML = `<div>${n.ssid}</div><div class="small">${n.rssi} dBm</div>`;
+        r.addEventListener('click', ()=> document.getElementById('ssid').value = n.ssid);
+        list.appendChild(r);
+      });
+    } catch(e) { alert('Scan failed: device unreachable'); }
+    setTimeout(()=> this.classList.remove('pressed'), 600);
+  });
+
+  if (connectBtn) connectBtn.addEventListener('click', async function() {
+    this.classList.add('pressed');
+    const ssid = document.getElementById('ssid').value.trim();
+    const pass = document.getElementById('wpass').value || '';
+    if (!ssid) { alert('Enter SSID'); this.classList.remove('pressed'); return; }
+    try {
+      // try mDNS or AP, send connect request
+      const hosts = [MDNS_HOST, AP_HOST];
+      let success = false;
+      for (const h of hosts) {
+        try {
+          const url = `http://${h}/api/wifi/connect`;
+          const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ssid, pass})});
+          if (r.ok) { success = true; break; }
+        } catch(e){}
+      }
+      if (success) {
+        alert('Connecting & saved (ESP will attempt to join)');
+        document.getElementById('wifiModal').style.display='none';
+        // after a short delay try to reconnect WS
+        setTimeout(()=> tryConnectWebSocket(), 2500);
+      } else alert('Connect failed (device unreachable or rejected)');
+    } catch(e) { alert('Connect failed'); }
+    setTimeout(()=> this.classList.remove('pressed'), 600);
+  });
+
+  if (disconnectBtn) disconnectBtn.addEventListener('click', async function() {
+    this.classList.add('pressed');
+    try {
+      const hosts = [MDNS_HOST, AP_HOST];
+      for (const h of hosts) {
+        try {
+          const url = `http://${h}/api/wifi/forget`;
+          await fetch(url, {method:'POST'});
+        } catch(e){}
+      }
+      alert('Forgot saved credentials on device (if any)');
+    } catch(e) { alert('Forget failed'); }
+    setTimeout(()=> this.classList.remove('pressed'), 600);
+  });
+}
+
+// Start attempts
+window.addEventListener('load', async () => {
+  // attach UI actions (override local-only handlers)
+  attachUIActions();
+  // attempt to connect WS
+  await tryConnectWebSocket();
+  // try to fetch wifi status and try STA IP if available
+  try {
+    const stat = await tryFetchAny('/api/wifi/status');
+    if (stat && stat.sta_connected && stat.sta_ip) {
+      // try connect WS to that IP as well
+      const r = await tryWsHost(stat.sta_ip, 1200);
+      if (r.ok) useSocket(r.ws, stat.sta_ip);
+    }
+  } catch(e){}
+  // Periodic reconnection attempts
+  setInterval(()=> {
+    if (!socketReady) tryConnectWebSocket();
+  }, 5000);
+});
+</script>
+
+</body>
+</html>
