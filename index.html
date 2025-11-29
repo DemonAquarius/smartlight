@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
@@ -514,12 +514,15 @@ body{padding:0;margin:0}
       </div>
     </div>
 
-    <div>
-      <div id="wifiBtn" class="wifi-btn" title="Wi-Fi (open) - click to configure">
-        <div class="wifi-arc wifi-a3"></div>
-        <div class="wifi-arc wifi-a2"></div>
-        <div class="wifi-arc wifi-a1"></div>
-        <div class="wifi-dot"></div>
+    <div style="display: flex; flex-direction: column; align-items: center;">
+      <div id="connectionStatus" style="font-size: 10px; margin-bottom: 4px; color: var(--muted2);">Disconnected</div>
+      <div>
+        <div id="wifiBtn" class="wifi-btn disconnected" title="Wi-Fi (open) - click to configure">
+          <div class="wifi-arc wifi-a3"></div>
+          <div class="wifi-arc wifi-a2"></div>
+          <div class="wifi-arc wifi-a1"></div>
+          <div class="wifi-dot"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -650,10 +653,8 @@ body{padding:0;margin:0}
       <div id="tabTools" style="display:none">
         <h3 style="margin-top:0">Tools & Quick Actions</h3>
         <div class="tools-grid" style="margin-top:8px">
-          <button id="simEnter" class="btn">Simulate Enter</button>
-          <button id="simLeave" class="ghost">Simulate Leave</button>
-          <button id="clearOverrides" class="ghost">Clear Manual Overrides</button>
-          <button id="applyEnergyNow" class="ghost">Apply Energy Saver</button>
+          <!-- Actual functionality will be handled by ESP32 -->
+          <button id="otaUpdateBtn" class="ghost">OTA Update</button>
         </div>
 
         <div class="card" style="margin-top:12px">
@@ -694,11 +695,24 @@ body{padding:0;margin:0}
 <div id="wifiModal" class="modal-back">
   <div class="modal">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:700">Wi-Fi Hotspot</div>
+      <div style="font-weight:700">Wi-Fi Configuration</div>
       <div id="wifiStatusText" class="small">Not connected</div>
     </div>
 
-    <div style="margin-top:12px">
+    <!-- Mode selection buttons -->
+    <div style="display:flex;gap:8px;margin:12px 0;">
+      <button id="apModeBtn" class="mode-chip">AP Mode</button>
+      <button id="staModeBtn" class="mode-chip">STA Mode</button>
+    </div>
+
+    <div id="apConfig" style="margin-top:12px;display:none;">
+      <div class="small">AP SSID</div>
+      <input id="apSsid" class="input" placeholder="AP SSID" value="SmartLight_AP">
+      <div class="small" style="margin-top:8px">AP Password</div>
+      <input id="apPass" class="input" placeholder="AP Password" value="12345678">
+    </div>
+
+    <div id="staConfig" style="margin-top:12px;">
       <div class="small">SSID</div>
       <input id="ssid" class="input" placeholder="SSID">
       <div class="small" style="margin-top:8px">Password</div>
@@ -743,7 +757,6 @@ function renderLights(){
   state.lights.slice(0,6).forEach(l=>{
     const el = document.createElement('div'); el.className = 'light-block' + (l.on? ' on':'');
     el.innerHTML = `<div class="circle" data-id="${l.id}"><div class="bulb">💡</div><div class="inner-status">${l.on?'ON':'OFF'}</div></div><div class="nameBelow">${escapeHtml(l.name)}</div>`;
-    el.querySelector('.circle').addEventListener('click', ()=> toggleLight(l.id));
     el.querySelector('.circle').addEventListener('contextmenu', e=>{ e.preventDefault(); renamePrompt(l.id); });
     grid.appendChild(el);
   });
@@ -751,7 +764,6 @@ function renderLights(){
   state.lights.slice(6).forEach(l=>{
     const el = document.createElement('div'); el.className = 'light-block' + (l.on? ' on':'');
     el.innerHTML = `<div class="circle" data-id="${l.id}"><div class="bulb">💡</div><div class="inner-status">${l.on?'ON':'OFF'}</div></div><div class="nameBelow">${escapeHtml(l.name)}</div>`;
-    el.querySelector('.circle').addEventListener('click', ()=> toggleLight(l.id));
     el.querySelector('.circle').addEventListener('contextmenu', e=>{ e.preventDefault(); renamePrompt(l.id); });
     lastRow.appendChild(el);
   });
@@ -762,9 +774,8 @@ function renderLights(){
 }
 
 function toggleLight(id){
-  vibr(); const idx = state.lights.findIndex(x=>x.id===id); if(idx===-1) return;
-  state.lights[idx].on = !state.lights[idx].on; state.lights[idx].manual = true;
-  $('#lastEvent').textContent = `${state.lights[idx].name} ${state.lights[idx].on ? 'ON':'OFF'}`; log(`${state.lights[idx].name} ${state.lights[idx].on ? 'ON':'OFF'}`); saveState(); renderLights();
+  // Use the ESP32 connector function instead of local state management
+  sendToggleWS(id);
 }
 
 function renamePrompt(id){
@@ -886,21 +897,17 @@ function addButtonAnimation(buttonId) {
   }
 }
 
-$('#simEnter').addEventListener('click', function(){ 
-  addButtonAnimation('simEnter');
-  state.presence=true; $('#presDot').classList.add('on'); $('#presText').textContent='Someone'; log('Simulated Enter'); saveState(); 
-});
-$('#simLeave').addEventListener('click', function(){ 
-  addButtonAnimation('simLeave');
-  state.presence=false; $('#presDot').classList.remove('on'); $('#presText').textContent='No one'; log('Simulated Leave'); saveState(); 
-});
-$('#clearOverrides').addEventListener('click', function(){ 
-  addButtonAnimation('clearOverrides');
-  state.lights.forEach(l=> l.manual=false); saveState(); renderLights(); log('Cleared manual overrides'); 
-});
-$('#applyEnergyNow').addEventListener('click', function(){ 
-  addButtonAnimation('applyEnergyNow');
-  state.lights.forEach((l,i)=> l.on = !!state.modeEnergy[i]); saveState(); renderLights(); log('Energy applied'); 
+$('#otaUpdateBtn').addEventListener('click', function(){ 
+  addButtonAnimation('otaUpdateBtn');
+  // Send OTA update command to ESP32
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({cmd:'otaUpdate'}));
+    log('OTA update command sent');
+    alert('OTA update initiated. The device will restart when the update is complete. Please wait...');
+  } else {
+    log('WS not connected; OTA update command not sent');
+    alert('Not connected to device. Please check your connection.');
+  }
 });
 
 /* Rename list UI inside settings (no modal) */
@@ -928,17 +935,214 @@ $('#closeWifi').addEventListener('click', function() {
 });
 $('#scanWifi').addEventListener('click', function() {
   addButtonAnimation('scanWifi');
-  const list = $('#wifiList'); list.innerHTML = '<div class="small">Scanning…</div>';
-  setTimeout(()=>{ list.innerHTML=''; ['LAB_WIFI','TeacherHotspot_5G','Office_2.4GHz','MobileHotspot','Guest_WiFi','Extra_AP'].slice(0,5).forEach(n=>{ const r = document.createElement('div'); r.className='wifi-item'; r.innerHTML = `<div>${n}</div><div class="small">${-40 - Math.floor(Math.random()*30)} dBm</div>`; r.addEventListener('click', ()=> $('#ssid').value = n); list.appendChild(r); }); },600);
+  // Removed demo WiFi scanning code
+  // This will be handled by the ESP32 connector
 });
-$('#connectWifi').addEventListener('click', function() { 
+
+// Add mode selection functionality
+let currentMode = 'sta'; // default to STA mode
+
+// Mode selection
+$('#apModeBtn').addEventListener('click', function() {
+  switchMode('AP');
+  addButtonAnimation('apModeBtn');
+});
+
+$('#staModeBtn').addEventListener('click', function() {
+  switchMode('STA');
+  addButtonAnimation('staModeBtn');
+});
+
+// Initialize mode buttons
+document.addEventListener('DOMContentLoaded', function() {
+  // Fetch current mode from ESP32
+  fetchCurrentMode();
+});
+
+// Function to fetch current mode from ESP32
+async function fetchCurrentMode() {
+  try {
+    const hosts = ['smartlight.local', '192.168.4.1'];
+    for (const h of hosts) {
+      try {
+        const url = `http://${h}/api/mode`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          updateModeUI(data.mode);
+          return;
+        }
+      } catch(e) {
+        console.warn(`Failed to fetch mode from ${h}`, e);
+      }
+    }
+  } catch(e) {
+    console.warn('Failed to fetch current mode', e);
+  }
+}
+
+// Function to update UI based on mode
+function updateModeUI(mode) {
+  if (mode === 'AP') {
+    currentMode = 'ap';
+    $('#apModeBtn').classList.add('selected');
+    $('#staModeBtn').classList.remove('selected');
+    $('#apConfig').style.display = 'block';
+    $('#staConfig').style.display = 'none';
+  } else {
+    currentMode = 'sta';
+    $('#staModeBtn').classList.add('selected');
+    $('#apModeBtn').classList.remove('selected');
+    $('#staConfig').style.display = 'block';
+    $('#apConfig').style.display = 'none';
+  }
+}
+
+// Function to switch mode on ESP32
+async function switchMode(newMode) {
+  try {
+    const hosts = ['smartlight.local', '192.168.4.1'];
+    let success = false;
+    
+    for (const h of hosts) {
+      try {
+        const url = `http://${h}/api/mode`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({mode: newMode})
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'success') {
+            success = true;
+            // Show message to user
+            alert(data.message);
+            // If mode was changed, the device will restart
+            if (data.message.includes('restart')) {
+              $('#wifiModal').style.display='none';
+              document.body.style.overflow='';
+              // Try to reconnect after restart
+              setTimeout(()=> tryConnectWebSocket(), 3000);
+            }
+            break;
+          }
+        }
+      } catch(e) {
+        console.warn(`Failed to switch mode on ${h}`, e);
+      }
+    }
+    
+    if (!success) {
+      alert('Failed to switch mode');
+    }
+  } catch(e) {
+    console.warn('Failed to switch mode', e);
+    alert('Failed to switch mode');
+  }
+}
+
+$('#connectWifi').addEventListener('click', async function() {
   addButtonAnimation('connectWifi');
-  const s = $('#ssid').value.trim(); if(!s){ alert('Enter SSID'); return; } $('#wifiStatusText').textContent = 'Connecting…'; setTimeout(()=>{ $('#wifiStatusText').textContent = 'Connected'; $('#wifiBtn').classList.add('connected'); $('#wifiBtn').classList.remove('disconnected'); state.wifiConnected=true; saveState(); log('Wi-Fi connected: '+s); $('#wifiModal').style.display='none'; document.body.style.overflow=''; },900); 
+  
+  if (currentMode === 'ap') {
+    // Handle AP mode configuration
+    const apSsid = document.getElementById('apSsid').value.trim();
+    const apPass = document.getElementById('apPass').value || '';
+    
+    if (!apSsid) { 
+      alert('Enter AP SSID'); 
+      this.classList.remove('pressed'); 
+      return; 
+    }
+    
+    // Send AP configuration to ESP32
+    try {
+      const hosts = ['smartlight.local', '192.168.4.1'];
+      let success = false;
+      
+      for (const h of hosts) {
+        try {
+          const url = `http://${h}/api/wifi/ap_config`;
+          const r = await fetch(url, {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ssid: apSsid, pass: apPass})
+          });
+          if (r.ok) { 
+            success = true; 
+            break; 
+          }
+        } catch(e) {
+          console.warn(`Failed to configure AP on ${h}`, e);
+        }
+      }
+      
+      if (success) {
+        document.getElementById('wifiStatusText').textContent = `AP Mode: ${apSsid}`;
+        alert('AP configured. Device will restart in AP mode.');
+        document.getElementById('wifiModal').style.display='none';
+        setTimeout(()=> tryConnectWebSocket(), 2500);
+      } else {
+        document.getElementById('wifiStatusText').textContent = 'AP configuration failed';
+        alert('AP configuration failed');
+      }
+    } catch(e) { 
+      document.getElementById('wifiStatusText').textContent = 'AP configuration error';
+      alert('AP configuration failed'); 
+    }
+  } else {
+    // Handle STA mode connection (existing functionality)
+    const ssid = document.getElementById('ssid').value.trim();
+    const pass = document.getElementById('wpass').value || '';
+    if (!ssid) { alert('Enter SSID'); this.classList.remove('pressed'); return; }
+    
+    // Show connecting status
+    document.getElementById('wifiStatusText').textContent = 'Connecting...';
+    
+    try {
+      // try mDNS or AP, send connect request
+      const hosts = ['smartlight.local', '192.168.4.1'];
+      let success = false;
+      let connectedHost = null;
+      
+      for (const h of hosts) {
+        try {
+          const url = `http://${h}/api/wifi/connect`;
+          const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ssid, pass})});
+          if (r.ok) { 
+            success = true; 
+            connectedHost = h;
+            break; 
+          }
+        } catch(e){
+          console.warn(`Failed to connect to ${h}`, e);
+        }
+      }
+      
+      if (success) {
+        document.getElementById('wifiStatusText').textContent = `Connected to ${connectedHost}`;
+        alert('Connecting & saved (ESP will attempt to join)');
+        document.getElementById('wifiModal').style.display='none';
+        // after a short delay try to reconnect WS
+        setTimeout(()=> tryConnectWebSocket(), 2500);
+      } else {
+        document.getElementById('wifiStatusText').textContent = 'Connection failed';
+        alert('Connect failed (device unreachable or rejected)');
+      }
+    } catch(e) { 
+      document.getElementById('wifiStatusText').textContent = 'Connection error';
+      alert('Connect failed'); 
+    }
+  }
+  setTimeout(()=> this.classList.remove('pressed'), 600);
 });
 
 $('#disconnectWifi').addEventListener('click', function() { 
   addButtonAnimation('disconnectWifi');
-  $('#wifiStatusText').textContent = 'Disconnecting…'; setTimeout(()=>{ $('#wifiStatusText').textContent = 'Not connected'; $('#wifiBtn').classList.remove('connected'); $('#wifiBtn').classList.add('disconnected'); state.wifiConnected=false; saveState(); log('Wi-Fi disconnected'); $('#wifiModal').style.display='none'; document.body.style.overflow=''; },900); 
+  // Removed demo disconnect functionality
+  // This will be handled by the ESP32 connector
 });
 
 /* Nav switching */
@@ -982,7 +1186,8 @@ $$('.settings-tab').forEach(function(tab) {
 function populateTimerSelect(){ const sel = $('#tLight'); sel.innerHTML=''; state.lights.forEach(l=>{ const o = document.createElement('option'); o.value = l.id; o.textContent = l.name; sel.appendChild(o); }); }
 
 /* Auto demo sensors triggers */
-setInterval(()=>{ if(state.rcwl && Math.random()>0.86){ state.presence=true; $('#presDot').classList.add('on'); $('#presText').textContent='Someone'; log('RCWL detected'); saveState(); } if(state.presence && Math.random()>0.995){ state.presence=false; $('#presDot').classList.remove('on'); $('#presText').textContent='No one'; log('Auto cleared presence'); saveState(); } },6000);
+// Removed demo sensor triggers
+// Actual sensor data will come from ESP32
 
 /* close modals when clicking backdrop */
 $$('.modal-back').forEach(m=> m.addEventListener('click', ev=> { if(ev.target === m){ addButtonAnimation(m.id || 'modalClose'); m.style.display='none'; document.body.style.overflow=''; } }));
@@ -1009,10 +1214,7 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 initUI();
-</script>
 
-<!-- ========= Injected ESP connection + WiFi API JS (must be after initUI) ========= -->
-<script>
 /* SmartLight ESP connector — auto-discover + WiFi API + WebSocket handlers
    - Tries: ws://smartlight.local/ws -> ws://<sta_ip>/ws -> ws://192.168.4.1/ws
    - Uses REST endpoints: /api/wifi/scan, /api/wifi/connect, /api/wifi/status, /api/wifi/forget
@@ -1050,6 +1252,13 @@ async function tryConnectWebSocket() {
   // if already connected, return
   if (socket && socketReady) return true;
 
+  // Update UI to show attempting connection
+  const wifiBtn = document.getElementById('wifiBtn');
+  wifiBtn.classList.remove('connected', 'disconnected');
+  wifiBtn.classList.add('connecting');
+  document.getElementById('wifiStatusText').textContent = 'Connecting...';
+  document.getElementById('connectionStatus').textContent = 'Connecting...';
+
   // 1) try mDNS
   try {
     console.debug('Trying mDNS host', MDNS_HOST);
@@ -1066,19 +1275,32 @@ async function tryConnectWebSocket() {
     if (info && info.sta_connected && info.sta_ip) {
       try {
         const r2 = await tryWsHost(info.sta_ip, 1200);
-        if (r2.ok) { useSocket(r2.ws, info.sta_ip); return true; }
-      } catch(e){ /* ignore */ }
+        if (r2.ok) { 
+          useSocket(r2.ws, info.sta_ip); 
+          return true; 
+        }
+      } catch(e){ console.warn('STA IP connection failed', e); }
     }
-  } catch(e) { /* ignore */ }
+  } catch(e) { console.warn('WiFi status check failed', e); }
 
   // 3) try AP fallback
   try {
     console.debug('Trying AP host', AP_HOST);
     const r3 = await tryWsHost(AP_HOST, 1200);
-    if (r3.ok) { useSocket(r3.ws, AP_HOST); return true; }
-  } catch(e){ /* ignore */ }
+    if (r3.ok) { 
+      useSocket(r3.ws, AP_HOST); 
+      return true; 
+    }
+  } catch(e){ console.warn('AP connection failed', e); }
 
   console.warn('All WS attempts failed');
+  
+  // Update UI to show failed connection
+  wifiBtn.classList.remove('connecting');
+  wifiBtn.classList.add('disconnected');
+  document.getElementById('wifiStatusText').textContent = 'Not connected';
+  document.getElementById('connectionStatus').textContent = 'Disconnected';
+  
   return false;
 }
 
@@ -1089,9 +1311,39 @@ function useSocket(ws, host) {
   socket = ws;
   socketReady = true;
   console.log('WebSocket connected to', host);
+  
+  // Add visual feedback for connection
+  const wifiBtn = document.getElementById('wifiBtn');
+  wifiBtn.classList.remove('disconnected', 'connecting');
+  wifiBtn.classList.add('connected');
+  document.getElementById('wifiStatusText').textContent = `Connected to ${host}`;
+  document.getElementById('connectionStatus').textContent = `Connected to ${host}`;
+  
   socket.onmessage = (ev) => handleWsMessage(ev.data);
-  socket.onclose = () => { socketReady = false; console.log('WS closed'); setTimeout(()=> tryConnectWebSocket(), 1000); };
-  socket.onerror = (e) => { socketReady = false; console.warn('WS error', e); };
+  socket.onclose = () => { 
+    socketReady = false; 
+    console.log('WS closed'); 
+    
+    // Update UI to show disconnection
+    const wifiBtn = document.getElementById('wifiBtn');
+    wifiBtn.classList.remove('connected');
+    wifiBtn.classList.add('disconnected');
+    document.getElementById('wifiStatusText').textContent = 'Disconnected';
+    document.getElementById('connectionStatus').textContent = 'Disconnected';
+    
+    setTimeout(()=> tryConnectWebSocket(), 1000); 
+  };
+  socket.onerror = (e) => { 
+    socketReady = false; 
+    console.warn('WS error', e); 
+    
+    // Update UI to show error
+    const wifiBtn = document.getElementById('wifiBtn');
+    wifiBtn.classList.remove('connected');
+    wifiBtn.classList.add('disconnected');
+    document.getElementById('wifiStatusText').textContent = 'Connection error';
+    document.getElementById('connectionStatus').textContent = 'Connection error';
+  };
   // request state
   setTimeout(()=> {
     try { socket.send(JSON.stringify({cmd:'getState'})); } catch(e){}
@@ -1101,6 +1353,13 @@ function useSocket(ws, host) {
 function handleWsMessage(raw) {
   try {
     const d = JSON.parse(raw);
+    
+    // Update connection status display
+    if (d.deviceInfo) {
+      document.getElementById('connectionStatus').textContent = 
+        `Device: ${d.deviceInfo.name || 'SmartLight'} (${d.deviceInfo.ip || 'Unknown'})`;
+    }
+    
     // update UI (lights)
     if (Array.isArray(d.lights)) {
       d.lights.forEach(l => {
@@ -1119,14 +1378,45 @@ function handleWsMessage(raw) {
         }
       });
     }
+    
     if (typeof d.presence !== 'undefined') {
       document.getElementById('presDot').classList.toggle('on', !!d.presence);
       document.getElementById('presText').textContent = d.presence ? 'Someone' : 'No one';
       state.presence = !!d.presence;
       saveState();
     }
-    if (typeof d.pirEnabled !== 'undefined') { document.getElementById('pirToggle').checked = !!d.pirEnabled; state.pir = !!d.pirEnabled; saveState(); }
-    if (typeof d.rcwlEnabled !== 'undefined') { document.getElementById('rcwlToggle').checked = !!d.rcwlEnabled; state.rcwl = !!d.rcwlEnabled; saveState(); }
+    
+    if (typeof d.pirEnabled !== 'undefined') { 
+      document.getElementById('pirToggle').checked = !!d.pirEnabled; 
+      state.pir = !!d.pirEnabled; 
+      saveState(); 
+    }
+    
+    if (typeof d.rcwlEnabled !== 'undefined') { 
+      document.getElementById('rcwlToggle').checked = !!d.rcwlEnabled; 
+      state.rcwl = !!d.rcwlEnabled; 
+      saveState(); 
+    }
+    
+    // Handle device status updates
+    if (d.status) {
+      if (d.status.uptime) {
+        // Could display uptime information if needed
+      }
+      
+      if (d.status.signalStrength !== undefined) {
+        // Could display WiFi signal strength
+      }
+    }
+    
+    // Handle OTA update status
+    if (d.type === 'otaUpdate') {
+      if (d.status === 'initiated') {
+        log('OTA update initiated: ' + d.message);
+        alert('OTA update initiated. The device will restart when the update is complete. Please wait...');
+      }
+    }
+    
     // logs and other values can be mapped similarly
   } catch(e) {
     console.warn('Invalid WS message', e);
@@ -1150,113 +1440,18 @@ async function tryFetchAny(path, opts) {
 
 // Public helper used by UI code: send toggle using WS, fallback to /api (if needed)
 function sendToggleWS(id) {
-  const msg = JSON.stringify({cmd:'toggle', id});
+  // Send toggle command via WebSocket if connected
   if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(msg);
+    socket.send(JSON.stringify({cmd: 'toggle', id: id}));
   } else {
-    // fallback: attempt simple REST (not implemented for toggle in ESP default) - we keep WS as primary
-    console.warn('WS not connected; toggle not sent');
+    // Fallback to REST API if WebSocket is not available
+    fetch('/api/toggle', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id: id})
+    }).catch(e => console.warn('Failed to send toggle via REST API', e));
   }
 }
-
-/* Attach UI interactions to use WS instead of local-only functions */
-function attachUIActions() {
-  // override circle click behavior to use WS
-  document.querySelectorAll('.circle').forEach(c => {
-    c.replaceWith(c.cloneNode(true)); // remove previous listeners then rebind
-  });
-  document.querySelectorAll('.circle').forEach(c => {
-    c.addEventListener('click', e => {
-      const id = parseInt(c.dataset.id, 10);
-      sendToggleWS(id);
-    });
-    c.addEventListener('contextmenu', e => { e.preventDefault(); const id = parseInt(c.dataset.id, 10); renamePrompt(id); });
-  });
-
-  // WiFi modal buttons - override to call ESP API with fallback
-  const scanBtn = document.getElementById('scanWifi');
-  const connectBtn = document.getElementById('connectWifi');
-  const disconnectBtn = document.getElementById('disconnectWifi');
-
-  if (scanBtn) scanBtn.addEventListener('click', async function() {
-    this.classList.add('pressed');
-    try {
-      const json = await tryFetchAny('/api/wifi/scan');
-      const list = document.getElementById('wifiList');
-      list.innerHTML = '';
-      (json.networks || []).forEach(n => {
-        const r = document.createElement('div'); r.className='wifi-item';
-        r.innerHTML = `<div>${n.ssid}</div><div class="small">${n.rssi} dBm</div>`;
-        r.addEventListener('click', ()=> document.getElementById('ssid').value = n.ssid);
-        list.appendChild(r);
-      });
-    } catch(e) { alert('Scan failed: device unreachable'); }
-    setTimeout(()=> this.classList.remove('pressed'), 600);
-  });
-
-  if (connectBtn) connectBtn.addEventListener('click', async function() {
-    this.classList.add('pressed');
-    const ssid = document.getElementById('ssid').value.trim();
-    const pass = document.getElementById('wpass').value || '';
-    if (!ssid) { alert('Enter SSID'); this.classList.remove('pressed'); return; }
-    try {
-      // try mDNS or AP, send connect request
-      const hosts = [MDNS_HOST, AP_HOST];
-      let success = false;
-      for (const h of hosts) {
-        try {
-          const url = `http://${h}/api/wifi/connect`;
-          const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ssid, pass})});
-          if (r.ok) { success = true; break; }
-        } catch(e){}
-      }
-      if (success) {
-        alert('Connecting & saved (ESP will attempt to join)');
-        document.getElementById('wifiModal').style.display='none';
-        // after a short delay try to reconnect WS
-        setTimeout(()=> tryConnectWebSocket(), 2500);
-      } else alert('Connect failed (device unreachable or rejected)');
-    } catch(e) { alert('Connect failed'); }
-    setTimeout(()=> this.classList.remove('pressed'), 600);
-  });
-
-  if (disconnectBtn) disconnectBtn.addEventListener('click', async function() {
-    this.classList.add('pressed');
-    try {
-      const hosts = [MDNS_HOST, AP_HOST];
-      for (const h of hosts) {
-        try {
-          const url = `http://${h}/api/wifi/forget`;
-          await fetch(url, {method:'POST'});
-        } catch(e){}
-      }
-      alert('Forgot saved credentials on device (if any)');
-    } catch(e) { alert('Forget failed'); }
-    setTimeout(()=> this.classList.remove('pressed'), 600);
-  });
-}
-
-// Start attempts
-window.addEventListener('load', async () => {
-  // attach UI actions (override local-only handlers)
-  attachUIActions();
-  // attempt to connect WS
-  await tryConnectWebSocket();
-  // try to fetch wifi status and try STA IP if available
-  try {
-    const stat = await tryFetchAny('/api/wifi/status');
-    if (stat && stat.sta_connected && stat.sta_ip) {
-      // try connect WS to that IP as well
-      const r = await tryWsHost(stat.sta_ip, 1200);
-      if (r.ok) useSocket(r.ws, stat.sta_ip);
-    }
-  } catch(e){}
-  // Periodic reconnection attempts
-  setInterval(()=> {
-    if (!socketReady) tryConnectWebSocket();
-  }, 5000);
-});
 </script>
-
 </body>
 </html>
