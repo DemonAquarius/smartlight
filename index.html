@@ -362,6 +362,42 @@ body{padding:0;margin:0}
 .mode-chip{padding:10px;border-radius:10px;background:rgba(255,255,255,0.02);cursor:pointer;text-align:center;color:var(--muted2);border:1px solid rgba(255,255,255,0.03)}
 .mode-chip.selected{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#07213a}
 
+/* AP/STA Mode Button Animations */
+.mode-chip {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.mode-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.mode-chip.selected {
+  animation: modeSelectPulse 0.5s ease;
+}
+
+.mode-chip:active {
+  transform: scale(0.95);
+}
+
+@keyframes modeSelectPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes modeActivate {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(127, 177, 255, 0.7); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(127, 177, 255, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(127, 177, 255, 0); }
+}
+
+.mode-chip.activation-animation {
+  animation: modeActivate 0.6s ease;
+}
+
 /* mode selection */
 .mode-selection{padding:10px;border-radius:10px;background:rgba(255,255,255,0.02);cursor:pointer;text-align:center;color:var(--muted2);border:1px solid rgba(255,255,255,0.03);transition:all 0.2s ease}
 .mode-selection:hover{background:rgba(255,255,255,0.06);transform:translateY(-2px)}
@@ -702,18 +738,18 @@ body{padding:0;margin:0}
 
     <!-- Mode selection buttons -->
     <div style="display:flex;gap:8px;margin:12px 0;">
-      <button id="apModeBtn" class="mode-chip">AP Mode</button>
+      <button id="apModeBtn" class="mode-chip selected">AP Mode</button>
       <button id="staModeBtn" class="mode-chip">STA Mode</button>
     </div>
 
-    <div id="apConfig" style="margin-top:12px;display:none;">
+    <div id="apConfig" style="margin-top:12px;">
       <div class="small">AP SSID</div>
       <input id="apSsid" class="input" placeholder="AP SSID" value="SmartLight_AP">
       <div class="small" style="margin-top:8px">AP Password</div>
       <input id="apPass" class="input" placeholder="AP Password" value="12345678">
     </div>
 
-    <div id="staConfig" style="margin-top:12px;">
+    <div id="staConfig" style="margin-top:12px;display:none;">
       <div class="small">SSID</div>
       <input id="ssid" class="input" placeholder="SSID">
       <div class="small" style="margin-top:8px">Password</div>
@@ -941,21 +977,35 @@ $('#scanWifi').addEventListener('click', function() {
 });
 
 // Add mode selection functionality
-let currentMode = 'sta'; // default to STA mode
+let currentMode = 'ap'; // default to AP mode
 
 // Mode selection
 $('#apModeBtn').addEventListener('click', function() {
+  // Add activation animation
+  this.classList.add('activation-animation');
+  setTimeout(() => {
+    this.classList.remove('activation-animation');
+  }, 600);
+  
   switchMode('AP');
   addButtonAnimation('apModeBtn');
 });
 
 $('#staModeBtn').addEventListener('click', function() {
+  // Add activation animation
+  this.classList.add('activation-animation');
+  setTimeout(() => {
+    this.classList.remove('activation-animation');
+  }, 600);
+  
   switchMode('STA');
   addButtonAnimation('staModeBtn');
 });
 
 // Initialize mode buttons
 document.addEventListener('DOMContentLoaded', function() {
+  // Set initial mode to AP
+  updateModeUI('AP');
   // Fetch current mode from ESP32
   fetchCurrentMode();
 });
@@ -990,12 +1040,24 @@ function updateModeUI(mode) {
     $('#staModeBtn').classList.remove('selected');
     $('#apConfig').style.display = 'block';
     $('#staConfig').style.display = 'none';
+    
+    // Add activation animation to AP button
+    $('#apModeBtn').classList.add('activation-animation');
+    setTimeout(() => {
+      $('#apModeBtn').classList.remove('activation-animation');
+    }, 600);
   } else {
     currentMode = 'sta';
     $('#staModeBtn').classList.add('selected');
     $('#apModeBtn').classList.remove('selected');
     $('#staConfig').style.display = 'block';
     $('#apConfig').style.display = 'none';
+    
+    // Add activation animation to STA button
+    $('#staModeBtn').classList.add('activation-animation');
+    setTimeout(() => {
+      $('#staModeBtn').classList.remove('activation-animation');
+    }, 600);
   }
 }
 
@@ -1217,9 +1279,28 @@ window.addEventListener('DOMContentLoaded', function() {
 initUI();
 
 // Try to connect to the ESP32 device
+// Add a longer delay to ensure the ESP32 has time to fully start up
 setTimeout(() => {
+  console.log('Attempting to connect to ESP32 device...');
+  // First try to resolve the mDNS hostname to see if it's working
+  checkMdnsResolution();
   tryConnectWebSocket();
-}, 2000);
+}, 5000);
+
+// Function to check if mDNS resolution is working
+async function checkMdnsResolution() {
+  try {
+    console.log('Checking mDNS resolution for smartlight.local');
+    const response = await fetch('http://smartlight.local/api/wifi/status');
+    if (response.ok) {
+      console.log('mDNS resolution successful');
+    } else {
+      console.warn('mDNS resolution failed with status:', response.status);
+    }
+  } catch (e) {
+    console.warn('mDNS resolution failed with error:', e.message);
+  }
+}
 
 /* SmartLight ESP connector — auto-discover + WiFi API + WebSocket handlers
    - Tries: ws://smartlight.local/ws -> ws://<sta_ip>/ws -> ws://192.168.4.1/ws
@@ -1241,15 +1322,35 @@ let lastTried = [];
 function tryWsHost(host, timeout=5000) {
   return new Promise((resolve) => {
     try {
+      console.debug('Attempting WebSocket connection to', host);
       const url = `ws://${host}/ws`;
       const ws = new WebSocket(url);
       let done = false;
-      const tidy = (ok) => { if(done) return; done=true; if(ok) resolve({ok:true, ws}); else resolve({ok:false}); };
-      ws.onopen = () => tidy(true);
-      ws.onerror = () => tidy(false);
-      ws.onclose = () => { if(!done) tidy(false); };
-      setTimeout(()=> tidy(false), timeout);
-    } catch(e) { resolve({ok:false}); }
+      const tidy = (ok, error) => { 
+        if(done) return; 
+        done=true; 
+        console.debug('WebSocket connection result for', host, ok ? 'SUCCESS' : 'FAILED', error || '');
+        if(ok) resolve({ok:true, ws}); else resolve({ok:false, error});
+      };
+      ws.onopen = () => {
+        console.debug('WebSocket opened to', host);
+        tidy(true);
+      };
+      ws.onerror = (e) => {
+        console.warn('WebSocket error for', host, e);
+        tidy(false, 'Connection error');
+      };
+      ws.onclose = (e) => { 
+        if(!done) {
+          console.debug('WebSocket closed for', host, e.code, e.reason);
+          tidy(false, `Connection closed (${e.code})`);
+        }
+      };
+      setTimeout(()=> tidy(false, 'Connection timeout'), timeout);
+    } catch(e) { 
+      console.error('Exception in tryWsHost for', host, e);
+      resolve({ok:false, error: e.message}); 
+    }
   });
 }
 
@@ -1268,49 +1369,88 @@ async function tryConnectWebSocket() {
   // 1) try mDNS
   try {
     console.debug('Trying mDNS host', MDNS_HOST);
-    const r = await tryWsHost(MDNS_HOST, 3000);
+    document.getElementById('connectionStatus').textContent = `Trying mDNS host: ${MDNS_HOST}...`;
+    const r = await tryWsHost(MDNS_HOST, 5000);
     if (r.ok) {
+      console.log('Successfully connected to mDNS host', MDNS_HOST);
+      document.getElementById('connectionStatus').textContent = `Connected to mDNS host: ${MDNS_HOST}`;
       useSocket(r.ws, MDNS_HOST);
       return true;
+    } else {
+      console.warn('Failed to connect to mDNS host', MDNS_HOST);
+      document.getElementById('connectionStatus').textContent = `Failed to connect to mDNS host: ${MDNS_HOST}`;
     }
-  } catch(e){ console.warn('mDNS try failed', e); }
+  } catch(e){ 
+    console.warn('mDNS try failed', e);
+    document.getElementById('connectionStatus').textContent = `mDNS connection failed: ${e.message}`;
+  }
 
   // 2) try to discover sta IP via wifi status on mDNS or AP host
   try {
+    document.getElementById('connectionStatus').textContent = 'Checking WiFi status...';
     const hosts = [MDNS_HOST, AP_HOST];
     for (const h of hosts) {
       try {
+        console.debug('Checking WiFi status on host', h);
+        document.getElementById('connectionStatus').textContent = `Checking WiFi status on: ${h}...`;
         const url = `http://${h}/api/wifi/status`;
         const response = await fetch(url);
+        console.debug('WiFi status response from', h, response.status);
         if (response.ok) {
           const info = await response.json();
+          console.debug('WiFi status info from', h, info);
+          document.getElementById('connectionStatus').textContent = `WiFi status from ${h}: ${info.sta_connected ? 'Connected' : 'Disconnected'}`;
           if (info && info.sta_connected && info.sta_ip) {
             // Update connection status with additional info
             document.getElementById('connectionStatus').textContent = 
               `Connected to ${info.ssid || 'WiFi'} (${info.sta_ip}) RSSI: ${info.rssi || 'N/A'}`;
             try {
+              document.getElementById('connectionStatus').textContent = `Trying to connect to STA IP: ${info.sta_ip}...`;
               const r2 = await tryWsHost(info.sta_ip, 5000);
               if (r2.ok) { 
+                console.log('Successfully connected to STA IP', info.sta_ip);
+                document.getElementById('connectionStatus').textContent = `Connected to STA IP: ${info.sta_ip}`;
                 useSocket(r2.ws, info.sta_ip); 
                 return true; 
+              } else {
+                console.warn('Failed to connect to STA IP', info.sta_ip);
+                document.getElementById('connectionStatus').textContent = `Failed to connect to STA IP: ${info.sta_ip}`;
               }
             } catch(e){ console.warn('STA IP connection failed', e); }
           }
           break; // If we got a response (even if not connected), don't try other hosts
+        } else {
+          console.warn('WiFi status check failed on host', h, response.status);
+          document.getElementById('connectionStatus').textContent = `WiFi status check failed on: ${h} (Status: ${response.status})`;
         }
-      } catch(e) { /* try next host */ }
+      } catch(e) { 
+        console.warn('Exception during WiFi status check on host', h, e);
+        document.getElementById('connectionStatus').textContent = `Exception checking WiFi status on: ${h} (${e.message})`;
+      }
     }
-  } catch(e) { console.warn('WiFi status check failed', e); }
+  } catch(e) { 
+    console.warn('WiFi status check failed', e); 
+    document.getElementById('connectionStatus').textContent = `WiFi status check failed: ${e.message}`;
+  }
 
   // 3) try AP fallback
   try {
     console.debug('Trying AP host', AP_HOST);
-    const r3 = await tryWsHost(AP_HOST, 3000);
+    document.getElementById('connectionStatus').textContent = `Trying AP host: ${AP_HOST}...`;
+    const r3 = await tryWsHost(AP_HOST, 5000);
     if (r3.ok) { 
+      console.log('Successfully connected to AP host', AP_HOST);
+      document.getElementById('connectionStatus').textContent = `Connected to AP host: ${AP_HOST}`;
       useSocket(r3.ws, AP_HOST); 
       return true; 
+    } else {
+      console.warn('Failed to connect to AP host', AP_HOST);
+      document.getElementById('connectionStatus').textContent = `Failed to connect to AP host: ${AP_HOST}`;
     }
-  } catch(e){ console.warn('AP connection failed', e); }
+  } catch(e){ 
+    console.warn('AP connection failed', e);
+    document.getElementById('connectionStatus').textContent = `AP connection failed: ${e.message}`;
+  }
 
   console.warn('All WS attempts failed');
   
