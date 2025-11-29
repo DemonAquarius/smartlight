@@ -511,6 +511,7 @@ body{padding:0;margin:0}
       <div>
         <div class="brand-title">SmartSwitch</div>
         <div class="brand-sub">Classroom</div>
+        <div class="brand-sub"><a href="https://demonaquarius.github.io/smartlight/" style="color: var(--muted2); text-decoration: none;">GitHub Page</a></div>
       </div>
     </div>
 
@@ -1109,7 +1110,7 @@ $('#connectWifi').addEventListener('click', async function() {
       
       for (const h of hosts) {
         try {
-          const url = `http://${h}/api/wifi/connect`;
+          const url = `http://${h}/api/wifi/config`;
           const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ssid, pass})});
           if (r.ok) { 
             success = true; 
@@ -1215,6 +1216,11 @@ window.addEventListener('DOMContentLoaded', function() {
 
 initUI();
 
+// Try to connect to the ESP32 device
+setTimeout(() => {
+  tryConnectWebSocket();
+}, 2000);
+
 /* SmartLight ESP connector — auto-discover + WiFi API + WebSocket handlers
    - Tries: ws://smartlight.local/ws -> ws://<sta_ip>/ws -> ws://192.168.4.1/ws
    - Uses REST endpoints: /api/wifi/scan, /api/wifi/connect, /api/wifi/status, /api/wifi/forget
@@ -1232,7 +1238,7 @@ let socketReady = false;
 let lastTried = [];
 
 // small helper - try to connect ws to host
-function tryWsHost(host, timeout=1200) {
+function tryWsHost(host, timeout=5000) {
   return new Promise((resolve) => {
     try {
       const url = `ws://${host}/ws`;
@@ -1262,7 +1268,7 @@ async function tryConnectWebSocket() {
   // 1) try mDNS
   try {
     console.debug('Trying mDNS host', MDNS_HOST);
-    const r = await tryWsHost(MDNS_HOST, 1200);
+    const r = await tryWsHost(MDNS_HOST, 3000);
     if (r.ok) {
       useSocket(r.ws, MDNS_HOST);
       return true;
@@ -1271,22 +1277,35 @@ async function tryConnectWebSocket() {
 
   // 2) try to discover sta IP via wifi status on mDNS or AP host
   try {
-    const info = await tryFetchAny('/api/wifi/status');
-    if (info && info.sta_connected && info.sta_ip) {
+    const hosts = [MDNS_HOST, AP_HOST];
+    for (const h of hosts) {
       try {
-        const r2 = await tryWsHost(info.sta_ip, 1200);
-        if (r2.ok) { 
-          useSocket(r2.ws, info.sta_ip); 
-          return true; 
+        const url = `http://${h}/api/wifi/status`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const info = await response.json();
+          if (info && info.sta_connected && info.sta_ip) {
+            // Update connection status with additional info
+            document.getElementById('connectionStatus').textContent = 
+              `Connected to ${info.ssid || 'WiFi'} (${info.sta_ip}) RSSI: ${info.rssi || 'N/A'}`;
+            try {
+              const r2 = await tryWsHost(info.sta_ip, 5000);
+              if (r2.ok) { 
+                useSocket(r2.ws, info.sta_ip); 
+                return true; 
+              }
+            } catch(e){ console.warn('STA IP connection failed', e); }
+          }
+          break; // If we got a response (even if not connected), don't try other hosts
         }
-      } catch(e){ console.warn('STA IP connection failed', e); }
+      } catch(e) { /* try next host */ }
     }
   } catch(e) { console.warn('WiFi status check failed', e); }
 
   // 3) try AP fallback
   try {
     console.debug('Trying AP host', AP_HOST);
-    const r3 = await tryWsHost(AP_HOST, 1200);
+    const r3 = await tryWsHost(AP_HOST, 3000);
     if (r3.ok) { 
       useSocket(r3.ws, AP_HOST); 
       return true; 
@@ -1300,6 +1319,13 @@ async function tryConnectWebSocket() {
   wifiBtn.classList.add('disconnected');
   document.getElementById('wifiStatusText').textContent = 'Not connected';
   document.getElementById('connectionStatus').textContent = 'Disconnected';
+  
+  // Retry connection periodically if not connected
+  setTimeout(() => {
+    if (!socketReady) {
+      tryConnectWebSocket();
+    }
+  }, 15000);
   
   return false;
 }
@@ -1347,7 +1373,22 @@ function useSocket(ws, host) {
   // request state
   setTimeout(()=> {
     try { socket.send(JSON.stringify({cmd:'getState'})); } catch(e){}
-  }, 300);
+  }, 1000);
+  
+  // Periodically check connection status
+  setInterval(() => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      // Connection is good
+      document.getElementById('wifiBtn').classList.add('connected');
+      document.getElementById('wifiBtn').classList.remove('disconnected');
+    } else {
+      // Connection lost
+      document.getElementById('wifiBtn').classList.remove('connected');
+      document.getElementById('wifiBtn').classList.add('disconnected');
+      // Try to reconnect
+      tryConnectWebSocket();
+    }
+  }, 30000); // Check every 30 seconds
 }
 
 function handleWsMessage(raw) {
@@ -1435,7 +1476,7 @@ async function tryFetchAny(path, opts) {
       }
     } catch(e) { /* try next */ }
   }
-  throw new Error('All hosts failed');
+  return null; // Return null instead of throwing error
 }
 
 // Public helper used by UI code: send toggle using WS, fallback to /api (if needed)
@@ -1445,11 +1486,24 @@ function sendToggleWS(id) {
     socket.send(JSON.stringify({cmd: 'toggle', id: id}));
   } else {
     // Fallback to REST API if WebSocket is not available
-    fetch('/api/toggle', {
+    // Try mDNS host first
+    fetch(`http://${MDNS_HOST}/api/toggle`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({id: id})
-    }).catch(e => console.warn('Failed to send toggle via REST API', e));
+    }).catch(e => {
+      console.warn('Failed to send toggle via REST API to mDNS host', e);
+      // Try AP host as fallback
+      fetch(`http://${AP_HOST}/api/toggle`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id})
+      }).catch(e => {
+        console.warn('Failed to send toggle via REST API to AP host', e);
+        // Show error to user if both methods fail
+        alert('Failed to send command to device. Please check your connection.');
+      });
+    });
   }
 }
 </script>
