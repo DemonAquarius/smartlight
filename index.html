@@ -987,7 +987,17 @@ $('#apModeBtn').addEventListener('click', function() {
     this.classList.remove('activation-animation');
   }, 600);
   
-  switchMode('AP');
+  // Show switching message
+  document.getElementById('wifiStatusText').textContent = 'Switching to AP mode...';
+  
+  // Switch to AP mode and connect
+  switchMode('AP').then(() => {
+    // After switching mode, automatically connect
+    // Add a longer delay to ensure the mode switch has completed
+    setTimeout(() => {
+      connectToApMode();
+    }, 3000);
+  });
   addButtonAnimation('apModeBtn');
 });
 
@@ -998,7 +1008,17 @@ $('#staModeBtn').addEventListener('click', function() {
     this.classList.remove('activation-animation');
   }, 600);
   
-  switchMode('STA');
+  // Show switching message
+  document.getElementById('wifiStatusText').textContent = 'Switching to STA mode...';
+  
+  // Switch to STA mode and connect
+  switchMode('STA').then(() => {
+    // After switching mode, automatically connect
+    // Add a longer delay to ensure the mode switch has completed
+    setTimeout(() => {
+      connectToStaMode();
+    }, 3000);
+  });
   addButtonAnimation('staModeBtn');
 });
 
@@ -1064,6 +1084,9 @@ function updateModeUI(mode) {
 // Function to switch mode on ESP32
 async function switchMode(newMode) {
   try {
+    // Show switching message
+    document.getElementById('wifiStatusText').textContent = `Switching to ${newMode} mode...`;
+    
     const hosts = ['smartlight.local', '192.168.4.1'];
     let success = false;
     
@@ -1098,11 +1121,110 @@ async function switchMode(newMode) {
     }
     
     if (!success) {
+      document.getElementById('wifiStatusText').textContent = `Failed to switch to ${newMode} mode`;
       alert('Failed to switch mode');
     }
   } catch(e) {
     console.warn('Failed to switch mode', e);
+    document.getElementById('wifiStatusText').textContent = 'Failed to switch mode';
     alert('Failed to switch mode');
+  }
+}
+
+// Function to automatically connect to AP mode
+async function connectToApMode() {
+  // Handle AP mode configuration
+  const apSsid = document.getElementById('apSsid').value.trim();
+  const apPass = document.getElementById('apPass').value || '';
+  
+  if (!apSsid) { 
+    alert('Enter AP SSID'); 
+    return; 
+  }
+  
+  // Show connecting status
+  document.getElementById('wifiStatusText').textContent = 'Configuring AP mode...';
+  
+  // Send AP configuration to ESP32
+  try {
+    const hosts = ['smartlight.local', '192.168.4.1'];
+    let success = false;
+    
+    for (const h of hosts) {
+      try {
+        const url = `http://${h}/api/wifi/ap_config`;
+        const r = await fetch(url, {
+          method: 'POST', 
+          headers: {'Content-Type': 'application/json'}, 
+          body: JSON.stringify({ssid: apSsid, pass: apPass})
+        });
+        if (r.ok) { 
+          success = true; 
+          break; 
+        }
+      } catch(e) {
+        console.warn(`Failed to configure AP on ${h}`, e);
+      }
+    }
+    
+    if (success) {
+      document.getElementById('wifiStatusText').textContent = `AP Mode: ${apSsid}`;
+      alert('AP configured. Device will restart in AP mode.');
+      document.getElementById('wifiModal').style.display='none';
+      setTimeout(()=> tryConnectWebSocket(), 2500);
+    } else {
+      document.getElementById('wifiStatusText').textContent = 'AP configuration failed';
+      alert('AP configuration failed');
+    }
+  } catch(e) { 
+    document.getElementById('wifiStatusText').textContent = 'AP configuration error';
+    alert('AP configuration failed'); 
+  }
+}
+
+// Function to automatically connect to STA mode
+async function connectToStaMode() {
+  // Handle STA mode connection
+  const ssid = document.getElementById('ssid').value.trim();
+  const pass = document.getElementById('wpass').value || '';
+  if (!ssid) { alert('Enter SSID'); return; }
+  
+  // Show connecting status
+  document.getElementById('wifiStatusText').textContent = 'Connecting to WiFi...';
+  
+  try {
+    // try mDNS or AP, send connect request
+    const hosts = ['smartlight.local', '192.168.4.1'];
+    let success = false;
+    let connectedHost = null;
+    
+    for (const h of hosts) {
+      try {
+        const url = `http://${h}/api/wifi/config`;
+        const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ssid, pass})});
+        if (r.ok) { 
+          success = true; 
+          connectedHost = h;
+          break; 
+        }
+      } catch(e){
+        console.warn(`Failed to connect to ${h}`, e);
+      }
+    }
+    
+    if (success) {
+      document.getElementById('wifiStatusText').textContent = `Connected to ${connectedHost}`;
+      alert('Connecting & saved (ESP will attempt to join)');
+      document.getElementById('wifiModal').style.display='none';
+      // after a short delay try to reconnect WS
+      setTimeout(()=> tryConnectWebSocket(), 2500);
+    } else {
+      document.getElementById('wifiStatusText').textContent = 'Connection failed';
+      alert('Connect failed (device unreachable or rejected)');
+    }
+  } catch(e) { 
+    document.getElementById('wifiStatusText').textContent = 'Connection error';
+    alert('Connect failed'); 
   }
 }
 
@@ -1111,93 +1233,10 @@ $('#connectWifi').addEventListener('click', async function() {
   
   if (currentMode === 'ap') {
     // Handle AP mode configuration
-    const apSsid = document.getElementById('apSsid').value.trim();
-    const apPass = document.getElementById('apPass').value || '';
-    
-    if (!apSsid) { 
-      alert('Enter AP SSID'); 
-      this.classList.remove('pressed'); 
-      return; 
-    }
-    
-    // Send AP configuration to ESP32
-    try {
-      const hosts = ['smartlight.local', '192.168.4.1'];
-      let success = false;
-      
-      for (const h of hosts) {
-        try {
-          const url = `http://${h}/api/wifi/ap_config`;
-          const r = await fetch(url, {
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'}, 
-            body: JSON.stringify({ssid: apSsid, pass: apPass})
-          });
-          if (r.ok) { 
-            success = true; 
-            break; 
-          }
-        } catch(e) {
-          console.warn(`Failed to configure AP on ${h}`, e);
-        }
-      }
-      
-      if (success) {
-        document.getElementById('wifiStatusText').textContent = `AP Mode: ${apSsid}`;
-        alert('AP configured. Device will restart in AP mode.');
-        document.getElementById('wifiModal').style.display='none';
-        setTimeout(()=> tryConnectWebSocket(), 2500);
-      } else {
-        document.getElementById('wifiStatusText').textContent = 'AP configuration failed';
-        alert('AP configuration failed');
-      }
-    } catch(e) { 
-      document.getElementById('wifiStatusText').textContent = 'AP configuration error';
-      alert('AP configuration failed'); 
-    }
+    await connectToApMode();
   } else {
-    // Handle STA mode connection (existing functionality)
-    const ssid = document.getElementById('ssid').value.trim();
-    const pass = document.getElementById('wpass').value || '';
-    if (!ssid) { alert('Enter SSID'); this.classList.remove('pressed'); return; }
-    
-    // Show connecting status
-    document.getElementById('wifiStatusText').textContent = 'Connecting...';
-    
-    try {
-      // try mDNS or AP, send connect request
-      const hosts = ['smartlight.local', '192.168.4.1'];
-      let success = false;
-      let connectedHost = null;
-      
-      for (const h of hosts) {
-        try {
-          const url = `http://${h}/api/wifi/config`;
-          const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ssid, pass})});
-          if (r.ok) { 
-            success = true; 
-            connectedHost = h;
-            break; 
-          }
-        } catch(e){
-          console.warn(`Failed to connect to ${h}`, e);
-        }
-      }
-      
-      if (success) {
-        document.getElementById('wifiStatusText').textContent = `Connected to ${connectedHost}`;
-        alert('Connecting & saved (ESP will attempt to join)');
-        document.getElementById('wifiModal').style.display='none';
-        // after a short delay try to reconnect WS
-        setTimeout(()=> tryConnectWebSocket(), 2500);
-      } else {
-        document.getElementById('wifiStatusText').textContent = 'Connection failed';
-        alert('Connect failed (device unreachable or rejected)');
-      }
-    } catch(e) { 
-      document.getElementById('wifiStatusText').textContent = 'Connection error';
-      alert('Connect failed'); 
-    }
+    // Handle STA mode connection
+    await connectToStaMode();
   }
   setTimeout(()=> this.classList.remove('pressed'), 600);
 });
