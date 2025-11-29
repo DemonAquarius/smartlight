@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>SmartSwitch — Final UI</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💡</text></svg>">
 <style>
 :root{
   --bg: linear-gradient(180deg,#0f1030 0%, #0b1538 100%);
@@ -548,6 +549,7 @@ body{padding:0;margin:0}
         <div class="brand-title">SmartSwitch</div>
         <div class="brand-sub">Classroom</div>
         <div class="brand-sub"><a href="https://demonaquarius.github.io/smartlight/" style="color: var(--muted2); text-decoration: none;">GitHub Page</a></div>
+        <div class="brand-sub" style="font-size: 10px; color: #ff9a9a;">Note: Device must support WSS when accessed via HTTPS</div>
       </div>
     </div>
 
@@ -1036,7 +1038,9 @@ async function fetchCurrentMode() {
     const hosts = ['smartlight.local', '192.168.4.1'];
     for (const h of hosts) {
       try {
-        const url = `http://${h}/api/mode`;
+        // Use https:// if page is loaded over HTTPS, otherwise http://
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        const url = `${protocol}//${h}/api/mode`;
         const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
@@ -1092,7 +1096,9 @@ async function switchMode(newMode) {
     
     for (const h of hosts) {
       try {
-        const url = `http://${h}/api/mode`;
+        // Use https:// if page is loaded over HTTPS, otherwise http://
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        const url = `${protocol}//${h}/api/mode`;
         const response = await fetch(url, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -1152,7 +1158,9 @@ async function connectToApMode() {
     
     for (const h of hosts) {
       try {
-        const url = `http://${h}/api/wifi/ap_config`;
+        // Use https:// if page is loaded over HTTPS, otherwise http://
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        const url = `${protocol}//${h}/api/wifi/ap_config`;
         const r = await fetch(url, {
           method: 'POST', 
           headers: {'Content-Type': 'application/json'}, 
@@ -1200,7 +1208,9 @@ async function connectToStaMode() {
     
     for (const h of hosts) {
       try {
-        const url = `http://${h}/api/wifi/config`;
+        // Use https:// if page is loaded over HTTPS, otherwise http://
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        const url = `${protocol}//${h}/api/wifi/config`;
         const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ssid, pass})});
         if (r.ok) { 
           success = true; 
@@ -1330,14 +1340,28 @@ setTimeout(() => {
 async function checkMdnsResolution() {
   try {
     console.log('Checking mDNS resolution for smartlight.local');
-    const response = await fetch('http://smartlight.local/api/wifi/status');
+    // Use https:// if page is loaded over HTTPS, otherwise http://
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    const response = await fetch(`${protocol}//smartlight.local/api/wifi/status`, { 
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
     if (response.ok) {
       console.log('mDNS resolution successful');
+      document.getElementById('connectionStatus').textContent = 'mDNS resolution successful';
     } else {
       console.warn('mDNS resolution failed with status:', response.status);
+      document.getElementById('connectionStatus').textContent = `mDNS resolution failed: ${response.status}`;
     }
   } catch (e) {
     console.warn('mDNS resolution failed with error:', e.message);
+    document.getElementById('connectionStatus').textContent = `mDNS resolution error: ${e.message}`;
+    // Provide user guidance
+    if (e.message.includes('NAME_NOT_RESOLVED')) {
+      console.log('Suggestion: Check if the device is powered on and connected to the same network');
+    }
   }
 }
 
@@ -1362,7 +1386,9 @@ function tryWsHost(host, timeout=5000) {
   return new Promise((resolve) => {
     try {
       console.debug('Attempting WebSocket connection to', host);
-      const url = `ws://${host}/ws`;
+      // Use wss:// if page is loaded over HTTPS, otherwise ws://
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const url = `${protocol}//${host}/ws`;
       const ws = new WebSocket(url);
       let done = false;
       const tidy = (ok, error) => { 
@@ -1377,18 +1403,37 @@ function tryWsHost(host, timeout=5000) {
       };
       ws.onerror = (e) => {
         console.warn('WebSocket error for', host, e);
-        tidy(false, 'Connection error');
+        // Provide more detailed error messages
+        let errorMsg = 'Connection error';
+        if (e.message && e.message.includes('insecure')) {
+          errorMsg = 'Security error: Cannot connect to insecure WebSocket from secure page. Make sure your device supports WSS.';
+        }
+        tidy(false, errorMsg);
       };
       ws.onclose = (e) => { 
         if(!done) {
           console.debug('WebSocket closed for', host, e.code, e.reason);
-          tidy(false, `Connection closed (${e.code})`);
+          // Provide more user-friendly close messages
+          let closeMsg = `Connection closed (${e.code})`;
+          if (e.code === 1006) {
+            closeMsg = 'Connection failed: Device may be offline or unreachable';
+          } else if (e.code === 1011) {
+            closeMsg = 'Server error: Device encountered an unexpected condition';
+          }
+          tidy(false, closeMsg);
         }
       };
       setTimeout(()=> tidy(false, 'Connection timeout'), timeout);
     } catch(e) { 
       console.error('Exception in tryWsHost for', host, e);
-      resolve({ok:false, error: e.message}); 
+      // Provide more detailed error messages to the user
+      let errorMsg = e.message;
+      if (e.message && e.message.includes('insecure')) {
+        errorMsg = 'Security error: Cannot connect to insecure WebSocket from secure page. Make sure your device supports WSS.';
+      } else if (e.message && e.message.includes('NAME_NOT_RESOLVED')) {
+        errorMsg = 'Device not found: Check if the device is powered on and connected to the same network.';
+      }
+      resolve({ok:false, error: errorMsg}); 
     }
   });
 }
@@ -1432,7 +1477,9 @@ async function tryConnectWebSocket() {
       try {
         console.debug('Checking WiFi status on host', h);
         document.getElementById('connectionStatus').textContent = `Checking WiFi status on: ${h}...`;
-        const url = `http://${h}/api/wifi/status`;
+        // Use https:// if page is loaded over HTTPS, otherwise http://
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        const url = `${protocol}//${h}/api/wifi/status`;
         const response = await fetch(url);
         console.debug('WiFi status response from', h, response.status);
         if (response.ok) {
@@ -1460,11 +1507,27 @@ async function tryConnectWebSocket() {
           break; // If we got a response (even if not connected), don't try other hosts
         } else {
           console.warn('WiFi status check failed on host', h, response.status);
-          document.getElementById('connectionStatus').textContent = `WiFi status check failed on: ${h} (Status: ${response.status})`;
+          let statusMsg = `WiFi status check failed on: ${h} (Status: ${response.status})`;
+          if (response.status === 404) {
+            statusMsg = `WiFi status check failed on: ${h} (Endpoint not found - check device firmware)`;
+          } else if (response.status === 500) {
+            statusMsg = `WiFi status check failed on: ${h} (Device internal error)`;
+          } else if (response.status === 0) {
+            statusMsg = `WiFi status check failed on: ${h} (Network error - device may be offline)`;
+          }
+          document.getElementById('connectionStatus').textContent = statusMsg;
         }
       } catch(e) { 
         console.warn('Exception during WiFi status check on host', h, e);
-        document.getElementById('connectionStatus').textContent = `Exception checking WiFi status on: ${h} (${e.message})`;
+        let errorMsg = `Exception checking WiFi status on: ${h} (${e.message})`;
+        if (e.message.includes('NAME_NOT_RESOLVED')) {
+          errorMsg = `Device not found: ${h} (Check if device is powered on and on same network)`;
+        } else if (e.message.includes('CONNECTION_TIMED_OUT')) {
+          errorMsg = `Connection timed out: ${h} (Device may be offline or unreachable)`;
+        } else if (e.message.includes('NETWORK_ERROR')) {
+          errorMsg = `Network error: Unable to reach ${h} (Check network connectivity)`;
+        }
+        document.getElementById('connectionStatus').textContent = errorMsg;
       }
     }
   } catch(e) { 
@@ -1493,11 +1556,21 @@ async function tryConnectWebSocket() {
 
   console.warn('All WS attempts failed');
   
-  // Update UI to show failed connection
+  // Update UI to show failed connection with helpful message
   wifiBtn.classList.remove('connecting');
   wifiBtn.classList.add('disconnected');
   document.getElementById('wifiStatusText').textContent = 'Not connected';
-  document.getElementById('connectionStatus').textContent = 'Disconnected';
+  document.getElementById('connectionStatus').textContent = 'Connection failed: Check if device is powered on and on same network';
+  
+  // Show user-friendly alert with troubleshooting tips
+  if (confirm('Unable to connect to SmartLight device. Would you like to see troubleshooting tips?')) {
+    alert('Troubleshooting tips:\n\n' +
+          '1. Ensure your SmartLight device is powered on\n' +
+          '2. Check that your device is connected to the same network as this computer\n' +
+          '3. If using mDNS, ensure your network supports mDNS (smartlight.local)\n' +
+          '4. Try accessing the device directly at 192.168.4.1 when in AP mode\n' +
+          '5. If accessing from HTTPS (GitHub Pages), your device must support WSS (WebSocket Secure)');
+  }
   
   // Retry connection periodically if not connected
   setTimeout(() => {
@@ -1648,7 +1721,9 @@ async function tryFetchAny(path, opts) {
   const hosts = [MDNS_HOST, AP_HOST];
   for (const h of hosts) {
     try {
-      const url = `http://${h}${path}`;
+      // Use https:// if page is loaded over HTTPS, otherwise http://
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      const url = `${protocol}//${h}${path}`;
       const r = await fetch(url, opts);
       if (r.ok) {
         try { return await r.json(); } catch(e) { return {}; }
@@ -1666,14 +1741,18 @@ function sendToggleWS(id) {
   } else {
     // Fallback to REST API if WebSocket is not available
     // Try mDNS host first
-    fetch(`http://${MDNS_HOST}/api/toggle`, {
+    // Use https:// if page is loaded over HTTPS, otherwise http://
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    fetch(`${protocol}//${MDNS_HOST}/api/toggle`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({id: id})
     }).catch(e => {
       console.warn('Failed to send toggle via REST API to mDNS host', e);
       // Try AP host as fallback
-      fetch(`http://${AP_HOST}/api/toggle`, {
+      // Use https:// if page is loaded over HTTPS, otherwise http://
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      fetch(`${protocol}//${AP_HOST}/api/toggle`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({id: id})
