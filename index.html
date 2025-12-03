@@ -708,13 +708,12 @@ body{padding:0;margin:0}
         </div>
       </div>
 
-      <div id="wifiBtn" class="wifi-btn disconnected" title="Wi-Fi (open) - click to configure">
+      <div id="wifiBtn" class="wifi-btn disconnected" title="Blynk Connection Status">
         <div class="wifi-arc wifi-a3"></div>
         <div class="wifi-arc wifi-a2"></div>
         <div class="wifi-arc wifi-a1"></div>
         <div class="wifi-dot"></div>
-      </div>
-    </div>
+      </div>    </div>
   </div>
 
   <!-- presence card -->
@@ -728,8 +727,7 @@ body{padding:0;margin:0}
         </div>
       </div>
 
-      <div id="connectionStatus" style="text-align:center;font-size:10px;color:var(--muted2)">Disconnected</div>
-
+      <div id="connectionStatus" style="text-align:center;font-size:10px;color:var(--muted2)">Disconnected from Blynk</div>
       <div style="text-align:right">
         <div class="small">Last event</div>
         <div id="lastEvent" class="small">—</div>
@@ -900,47 +898,25 @@ body{padding:0;margin:0}
   </div>
 </div>
 
-<!-- Centered Wi-Fi modal -->
+<!-- Blynk-only mode notification -->
 <div id="wifiModal" class="modal-back">
   <div class="modal">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:700">Wi-Fi Configuration</div>
-      <div id="wifiStatusText" class="small">Not connected</div>
+      <div style="font-weight:700">Blynk-Only Mode</div>
+      <div id="wifiStatusText" class="small">Device Controlled via Blynk Cloud</div>
     </div>
 
-    <!-- Mode selection buttons -->
-    <div style="display:flex;gap:8px;margin:12px 0;">
-      <button id="apModeBtn" class="mode-chip selected">AP Mode</button>
-      <button id="staModeBtn" class="mode-chip">STA Mode</button>
-      <button id="onlineModeBtn" class="mode-chip">Online Mode</button>
+    <div style="margin-top:20px; text-align:center;">
+      <p>This device operates in Blynk-only mode.</p>
+      <p>All control is handled through the Blynk app.</p>
+      <p>Connect to Blynk to control your SmartSwitch.</p>
     </div>
 
-    <div id="apConfig" style="margin-top:12px;">
-      <div class="small">AP SSID</div>
-      <input id="apSsid" class="input" placeholder="AP SSID" value="SmartLight_AP">
-      <div class="small" style="margin-top:8px">AP Password</div>
-      <input id="apPass" class="input" placeholder="AP Password" value="12345678">
-    </div>
-
-    <div id="staConfig" style="margin-top:12px;display:none;">
-      <div class="small">SSID</div>
-      <input id="ssid" class="input" placeholder="SSID">
-      <div class="small" style="margin-top:8px">Password</div>
-      <input id="wpass" class="input" placeholder="Password">
-    </div>
-
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button id="connectWifi" class="btn">Connect</button>
-      <button id="disconnectWifi" class="ghost">Disconnect</button>
+    <div style="display:flex;justify-content:center;margin-top:20px">
       <button id="closeWifi" class="ghost">Close</button>
-      <button id="scanWifi" class="ghost">Scan</button>
     </div>
-
-    <div id="wifiList" class="wifi-list" style="margin-top:12px"></div>
   </div>
-</div>
-
-<!-- Notification Modal -->
+</div><!-- Notification Modal -->
 <div id="notificationModal" class="modal-back" style="align-items: flex-start; padding-top: 20px; display: none;">
   <div class="modal" style="height: 80vh; display: flex; flex-direction: column; margin-top: 0;">
     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -973,6 +949,7 @@ body{padding:0;margin:0}
     </div>
   </div>
 </div>
+
 
 <script>
 /* ---------- State & helpers ---------- */
@@ -1457,7 +1434,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 1800000); // Refresh every 30 minutes
 });
 
-/* Wi-Fi modal (center) - demo */
+/* Wi-Fi modal (center) - Blynk-only mode */
 $('#wifiBtn').addEventListener('click', function() { 
   addButtonAnimation('wifiBtn');
   $('#wifiModal').style.display='flex'; document.body.style.overflow='hidden'; 
@@ -1496,14 +1473,7 @@ $('#notificationBtn').addEventListener('click', function() {
   $('#notificationModal').addEventListener('click', (e) => {
     if (e.target === $('#notificationModal')) closeModal();
   });
-});
-
-$('#wifiBtn').addEventListener('click', function() { 
-  addButtonAnimation('wifiBtn');
-  $('#wifiModal').style.display='flex'; document.body.style.overflow='hidden'; 
-});
-
-$('#closeWifi').addEventListener('click', function() { 
+});$('#closeWifi').addEventListener('click', function() { 
   addButtonAnimation('closeWifi');
   $('#wifiModal').style.display='none'; document.body.style.overflow=''; 
 });
@@ -1513,418 +1483,50 @@ $('#scanWifi').addEventListener('click', function() {
   // This will be handled by the ESP32 connector
 });
 
-// Add mode selection functionality
-let currentMode = 'ap'; // default to AP mode
+// Blynk-only mode functionality
+let currentMode = 'blynk'; // Only Blynk mode
 
-// Mode selection
-$('#apModeBtn').addEventListener('click', function() {
-  // Add activation animation
-  this.classList.add('activation-animation');
-  setTimeout(() => {
-    this.classList.remove('activation-animation');
-  }, 600);
-  
-  // Show switching message
-  document.getElementById('wifiStatusText').textContent = 'Switching to AP mode...';
-  
-  // Switch to AP mode and connect
-  switchMode('AP').then(() => {
-    // After switching mode, automatically connect
-    // Add a longer delay to ensure the mode switch has completed
-    setTimeout(() => {
-      connectToApMode();
-    }, 3000);
-  });
-  addButtonAnimation('apModeBtn');
-});
-
-$('#staModeBtn').addEventListener('click', function() {
-  // Add activation animation
-  this.classList.add('activation-animation');
-  setTimeout(() => {
-    this.classList.remove('activation-animation');
-  }, 600);
-  
-  // Show switching message
-  document.getElementById('wifiStatusText').textContent = 'Switching to STA mode...';
-  
-  // Switch to STA mode and connect
-  switchMode('STA').then(() => {
-    // After switching mode, automatically connect
-    // Add a longer delay to ensure the mode switch has completed
-    setTimeout(() => {
-      connectToStaMode();
-    }, 3000);
-  });
-  addButtonAnimation('staModeBtn');
-});
-
-$('#onlineModeBtn').addEventListener('click', function() {
-  // Add activation animation
-  this.classList.add('activation-animation');
-  setTimeout(() => {
-    this.classList.remove('activation-animation');
-  }, 600);
-  
-  // Show switching message
-  document.getElementById('wifiStatusText').textContent = 'Switching to ONLINE mode...';
-  
-  // Switch to ONLINE mode
-  switchMode('ONLINE').then(() => {
-    // After switching mode, automatically connect
-    // Add a longer delay to ensure the mode switch has completed
-    setTimeout(() => {
-      // For ONLINE mode, we don't need to connect to a specific network
-      // The device will connect to the internet through the configured STA
-      document.getElementById('wifiStatusText').textContent = 'ONLINE mode activated';
-      showMobileNotification('Success', 'ONLINE mode activated. Device will connect to internet.');
-      $('#wifiModal').style.display='none';
-      document.body.style.overflow='';
-      // Try to reconnect WebSocket
-      setTimeout(()=> tryConnectWebSocket(), 3000);
-      
-      // Update ONLINE mode button connected state
-      updateModeConnectedState('ONLINE', true);
-    }, 3000);
-  });
-  addButtonAnimation('onlineModeBtn');
-});
-
-// Initialize mode buttons
+// Initialize mode for Blynk-only
 document.addEventListener('DOMContentLoaded', function() {
-  // Set initial mode to AP
-  updateModeUI('AP');
-  // Fetch current mode from ESP32
-  fetchCurrentMode();
-  
-  // Ensure mode buttons start without connected state
-  $('#apModeBtn').classList.remove('ap-connected');
-  $('#staModeBtn').classList.remove('sta-connected');
-  $('#onlineModeBtn').classList.remove('online-connected');
-  
-  // Ensure all mode buttons have the base styling
-  $('#apModeBtn').classList.add('mode-chip');
-  $('#staModeBtn').classList.add('mode-chip');
-  $('#onlineModeBtn').classList.add('mode-chip');
+  // Set initial mode to Blynk
+  updateModeUI('BLYNK');
 });
 
-// Function to fetch current mode from ESP32
-async function fetchCurrentMode() {
-  try {
-    // Get API token if we don't have one
-    if (!apiToken) {
-      await getApiToken();
-    }
-    
-    const hosts = ['smartlight.local', '192.168.4.1'];
-    for (const h of hosts) {
-      try {
-        // Use https:// if page is loaded over HTTPS, otherwise http://
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        const url = `${protocol}//${h}/api/mode`;
-        
-        // Prepare headers with API token if available
-        const headers = {};
-        if (apiToken) {
-          headers['Authorization'] = `Bearer ${apiToken}`;
-        }
-        
-        const response = await fetch(url, { headers });
-        if (response.ok) {
-          const data = await response.json();
-          updateModeUI(data.mode);
-          return;
-        }
-      } catch(e) {
-        console.warn(`Failed to fetch mode from ${h}`, e);
-      }
-    }
-  } catch(e) {
-    console.warn('Failed to fetch current mode', e);
-  }
-}
-
-// Function to update UI based on mode
+// Simplified function to update UI for Blynk-only mode
 function updateModeUI(mode) {
-  // Remove selected classes from all buttons (don't remove connected states here)
-  $('#apModeBtn').classList.remove('selected');
-  $('#staModeBtn').classList.remove('selected');
-  $('#onlineModeBtn').classList.remove('selected');
-  
-  if (mode === 'AP') {
-    currentMode = 'ap';
-    $('#apModeBtn').classList.add('selected');
-    $('#staConfig').style.display = 'none';
-    $('#apConfig').style.display = 'block';
-    
-    // Add activation animation to AP button
-    $('#apModeBtn').classList.add('activation-animation');
-    setTimeout(() => {
-      $('#apModeBtn').classList.remove('activation-animation');
-    }, 600);
-  } else if (mode === 'STA') {
-    currentMode = 'sta';
-    $('#staModeBtn').classList.add('selected');
-    $('#apConfig').style.display = 'none';
-    $('#staConfig').style.display = 'block';
-    
-    // Add activation animation to STA button
-    $('#staModeBtn').classList.add('activation-animation');
-    setTimeout(() => {
-      $('#staModeBtn').classList.remove('activation-animation');
-    }, 600);
-  } else if (mode === 'ONLINE') {
-    currentMode = 'online';
-    $('#onlineModeBtn').classList.add('selected');
-    $('#apConfig').style.display = 'none';
-    $('#staConfig').style.display = 'none';
-    
-    // Add activation animation to ONLINE button
-    $('#onlineModeBtn').classList.add('activation-animation');
-    setTimeout(() => {
-      $('#onlineModeBtn').classList.remove('activation-animation');
-    }, 600);
-  }
-}
-
-// Function to update mode button connected states
-function updateModeConnectedState(mode, isConnected) {
-  if (mode === 'AP') {
-    if (isConnected) {
-      $('#apModeBtn').classList.add('ap-connected');
-    } else {
-      $('#apModeBtn').classList.remove('ap-connected');
-    }
-  } else if (mode === 'STA') {
-    if (isConnected) {
-      $('#staModeBtn').classList.add('sta-connected');
-    } else {
-      $('#staModeBtn').classList.remove('sta-connected');
-    }
-  } else if (mode === 'ONLINE') {
-    if (isConnected) {
-      $('#onlineModeBtn').classList.add('online-connected');
-    } else {
-      $('#onlineModeBtn').classList.remove('online-connected');
-    }
-  }
-}
-
-// Function to switch mode on ESP32
-async function switchMode(newMode) {
-  try {
-    // Show switching message
-    document.getElementById('wifiStatusText').textContent = `Switching to ${newMode} mode...`;
-    
-    // Get API token if we don't have one
-    if (!apiToken) {
-      await getApiToken();
-    }
-    
-    const hosts = ['smartlight.local', '192.168.4.1'];
-    let success = false;
-    
-    for (const h of hosts) {
-      try {
-        // Use https:// if page is loaded over HTTPS, otherwise http://
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        const url = `${protocol}//${h}/api/mode`;
-        
-        // Prepare headers with API token if available
-        const headers = {'Content-Type': 'application/json'};
-        if (apiToken) {
-          headers['Authorization'] = `Bearer ${apiToken}`;
-        }
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify({mode: newMode})
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.status === 'success') {
-            success = true;
-            // Show message to user
-            showMobileNotification('Success', data.message);
-            // If mode was changed, the device will restart
-            if (data.message.includes('restart')) {
-              $('#wifiModal').style.display='none';
-              document.body.style.overflow='';
-              // Try to reconnect after restart
-              setTimeout(()=> tryConnectWebSocket(), 3000);
-            }
-            break;
-          }
-        }
-      } catch(e) {
-        console.warn(`Failed to switch mode on ${h}`, e);
-      }
-    }
-    
-    if (!success) {
-      document.getElementById('wifiStatusText').textContent = `Failed to switch to ${newMode} mode`;
-      showMobileNotification('Error', 'Failed to switch mode');
-    }
-  } catch(e) {
-    console.warn('Failed to switch mode', e);
-    document.getElementById('wifiStatusText').textContent = 'Failed to switch mode';
-    showMobileNotification('Error', 'Failed to switch mode');
-  }
-}
-
-// Function to automatically connect to AP mode
-async function connectToApMode() {
-  // Handle AP mode configuration
-  const apSsid = document.getElementById('apSsid').value.trim();
-  const apPass = document.getElementById('apPass').value || '';
-  
-  if (!apSsid) { 
-    showMobileNotification('Error', 'Enter AP SSID'); 
-    return; 
-  }
-  
-  // Show connecting status
-  document.getElementById('wifiStatusText').textContent = 'Configuring AP mode...';
-  
-  // Get API token if we don't have one
-  if (!apiToken) {
-    await getApiToken();
-  }
-  
-  // Send AP configuration to ESP32
-  try {
-    const hosts = ['smartlight.local', '192.168.4.1'];
-    let success = false;
-    
-    for (const h of hosts) {
-      try {
-        // Use https:// if page is loaded over HTTPS, otherwise http://
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        const url = `${protocol}//${h}/api/wifi/ap_config`;
-        
-        // Prepare headers with API token if available
-        const headers = {'Content-Type': 'application/json'};
-        if (apiToken) {
-          headers['Authorization'] = `Bearer ${apiToken}`;
-        }
-        
-        const r = await fetch(url, {
-          method: 'POST', 
-          headers: headers, 
-          body: JSON.stringify({ssid: apSsid, pass: apPass})
-        });
-        if (r.ok) { 
-          success = true; 
-          break; 
-        }
-      } catch(e) {
-        console.warn(`Failed to configure AP on ${h}`, e);
-      }
-    }
-    
-    if (success) {
-      document.getElementById('wifiStatusText').textContent = `AP Mode: ${apSsid}`;
-      showMobileNotification('Success', 'AP configured. Device will restart in AP mode.');
-      document.getElementById('wifiModal').style.display='none';
-      setTimeout(()=> tryConnectWebSocket(), 2500);
-    } else {
-      document.getElementById('wifiStatusText').textContent = 'AP configuration failed';
-      showMobileNotification('Error', 'AP configuration failed');
-    }
-  } catch(e) { 
-    document.getElementById('wifiStatusText').textContent = 'AP configuration error';
-    showMobileNotification('Error', 'AP configuration failed'); 
-  }
-  
-  // Update AP mode button connected state
-  updateModeConnectedState('AP', true);
-}
-
-// Function to automatically connect to STA mode
-async function connectToStaMode() {
-  // Handle STA mode connection
-  const ssid = document.getElementById('ssid').value.trim();
-  const pass = document.getElementById('wpass').value || '';
-  if (!ssid) { showMobileNotification('Error', 'Enter SSID'); return; }
-  
-  // Show connecting status
-  document.getElementById('wifiStatusText').textContent = 'Connecting to WiFi...';
-  
-  // Get API token if we don't have one
-  if (!apiToken) {
-    await getApiToken();
-  }
-  
-  try {
-    // try mDNS or AP, send connect request
-    const hosts = ['smartlight.local', '192.168.4.1'];
-    let success = false;
-    let connectedHost = null;
-    
-    for (const h of hosts) {
-      try {
-        // Use https:// if page is loaded over HTTPS, otherwise http://
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        const url = `${protocol}//${h}/api/wifi/config`;
-        
-        // Prepare headers with API token if available
-        const headers = {'Content-Type': 'application/json'};
-        if (apiToken) {
-          headers['Authorization'] = `Bearer ${apiToken}`;
-        }
-        
-        const r = await fetch(url, {method:'POST', headers: headers, body: JSON.stringify({ssid, pass})});
-        if (r.ok) { 
-          success = true; 
-          connectedHost = h;
-          break; 
-        }
-      } catch(e){
-        console.warn(`Failed to connect to ${h}`, e);
-      }
-    }
-    
-    if (success) {
-      document.getElementById('wifiStatusText').textContent = `Connected to ${connectedHost}`;
-      showMobileNotification('Success', 'Connecting & saved (ESP will attempt to join)');
-      document.getElementById('wifiModal').style.display='none';
-      // after a short delay try to reconnect WS
-      setTimeout(()=> tryConnectWebSocket(), 2500);
-    } else {
-      document.getElementById('wifiStatusText').textContent = 'Connection failed';
-      showMobileNotification('Error', 'Connect failed (device unreachable or rejected)');
-    }
-  } catch(e) { 
-    document.getElementById('wifiStatusText').textContent = 'Connection error';
-    showMobileNotification('Error', 'Connect failed'); 
-  }
-  
-  // Update STA mode button connected state
-  updateModeConnectedState('STA', true);
-}
-
-$('#connectWifi').addEventListener('click', async function() {
-  addButtonAnimation('connectWifi');
-  
-  if (currentMode === 'ap') {
-    // Handle AP mode configuration
-    await connectToApMode();
+  // Update connection status display
+  const wifiBtn = document.getElementById('wifiBtn');
+  if (blynkConnected) {
+    wifiBtn.classList.remove('disconnected');
+    wifiBtn.classList.add('connected');
+    document.getElementById('connectionStatus').textContent = 'Connected to Blynk';
   } else {
-    // Handle STA mode connection
-    await connectToStaMode();
+    wifiBtn.classList.remove('connected');
+    wifiBtn.classList.add('disconnected');
+    document.getElementById('connectionStatus').textContent = 'Disconnected from Blynk';
   }
-  setTimeout(()=> this.classList.remove('pressed'), 600);
-});
+}
 
-$('#disconnectWifi').addEventListener('click', function() { 
-  addButtonAnimation('disconnectWifi');
-  // Removed demo disconnect functionality
-  // This will be handled by the ESP32 connector
-});
-
-/* Nav switching */
+// Simplified connection function for Blynk-only mode
+async function tryConnectWebSocket() {
+  // In Blynk-only mode, we don't connect directly to the device
+  // All communication happens through Blynk
+  console.log('Blynk-only mode: Direct device connection disabled');
+  
+  // Update UI to reflect Blynk-only mode
+  const wifiBtn = document.getElementById('wifiBtn');
+  if (blynkConnected) {
+    wifiBtn.classList.remove('disconnected');
+    wifiBtn.classList.add('connected');
+    document.getElementById('connectionStatus').textContent = 'Connected to Blynk (Device controlled via cloud)';
+  } else {
+    wifiBtn.classList.remove('connected');
+    wifiBtn.classList.add('disconnected');
+    document.getElementById('connectionStatus').textContent = 'Connect to Blynk for device control';
+  }
+  
+  return blynkConnected;
+}/* Nav switching */
 $$('.nav-item').forEach(function(it) {
   it.addEventListener('click', function() {
     $$('.nav-item').forEach(function(x) {
@@ -1963,10 +1565,6 @@ $$('.settings-tab').forEach(function(tab) {
 
 /* Populate timer select */
 function populateTimerSelect(){ const sel = $('#tLight'); sel.innerHTML=''; state.lights.forEach(l=>{ const o = document.createElement('option'); o.value = l.id; o.textContent = l.name; sel.appendChild(o); }); }
-
-/* Auto demo sensors triggers */
-// Removed demo sensor triggers
-// Actual sensor data will come from ESP32
 
 /* close modals when clicking backdrop */
 $$('.modal-back').forEach(m=> m.addEventListener('click', ev=> { if(ev.target === m){ addButtonAnimation(m.id || 'modalClose'); m.style.display='none'; document.body.style.overflow=''; } }));
@@ -2925,14 +2523,11 @@ function handleWsMessage(raw) {
 function updateNotificationModal() {
   // Update connection status
   const connectionStatusElement = document.getElementById('connectionStatusDetail');
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    connectionStatusElement.textContent = 'Connected';
+  if (blynkConnected) {
+    connectionStatusElement.textContent = 'Connected to Blynk';
     connectionStatusElement.style.color = '#4ef0a0';
-  } else if (socket && socket.readyState === WebSocket.CONNECTING) {
-    connectionStatusElement.textContent = 'Connecting...';
-    connectionStatusElement.style.color = '#7fb1ff';
   } else {
-    connectionStatusElement.textContent = 'Disconnected';
+    connectionStatusElement.textContent = 'Disconnected from Blynk';
     connectionStatusElement.style.color = '#ff9a9a';
   }
   
@@ -2963,9 +2558,7 @@ function updateNotificationModal() {
     li.textContent = logEntry;
     recentEventsElement.appendChild(li);
   });
-}
-
-// fetch helper that tries hosts (mDNS -> AP)
+}// fetch helper that tries hosts (mDNS -> AP)
 async function tryFetchAny(path, opts) {
   const hosts = [MDNS_HOST, AP_HOST];
   for (const h of hosts) {
