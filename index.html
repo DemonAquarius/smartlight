@@ -309,23 +309,25 @@ body{padding:0;margin:0}
   position: relative;
 }
 
-.gear-icon-modern .gear-outer {
+.gear-icon-modern::before {
+  content: '';
+  position: absolute;
   width: 20px;
   height: 20px;
   border: 2px solid rgba(255,255,255,0.95);
   border-radius: 50%;
-  position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
 }
 
-.gear-icon-modern .gear-inner {
+.gear-icon-modern::after {
+  content: '';
+  position: absolute;
   width: 10px;
   height: 10px;
   border: 2px solid rgba(255,255,255,0.95);
   border-radius: 50%;
-  position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -337,8 +339,8 @@ body{padding:0;margin:0}
   height: 6px;
   background: rgba(255,255,255,0.95);
   left: 50%;
-  top: 106%;
-  transform-origin: center -10px;
+  top: -3px;
+  transform-origin: center 15px;
 }
 
 .gear-icon-modern .gear-tooth.t1 { transform: translate(-50%, -50%) rotate(0deg); }
@@ -355,7 +357,7 @@ body{padding:0;margin:0}
 .gear-icon-modern .gear-tooth.t12 { transform: translate(-50%, -50%) rotate(330deg); }
 
 /* Centered modal styling + blur behind */
-.modal-back{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:1200}
+.modal-back{position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:1200}
 .modal{width:92%;max-width:520px;background:linear-gradient(180deg,#0f0720,#150926);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.06);box-shadow:0 30px 80px rgba(0,0,0,0.6);backdrop-filter: blur(6px);}
 
 /* mode choices grid */
@@ -365,28 +367,8 @@ body{padding:0;margin:0}
 
 /* Connected mode states */
 .mode-chip.connected{background:linear-gradient(135deg, #4ef0a0, #2ed18a); color: #07213a; box-shadow: 0 0 15px rgba(78, 240, 160, 0.3);}
-.mode-chip.ap-connected{background:linear-gradient(135deg, #4ef0a0, #2ed18a); color: #07213a; box-shadow: 0 0 15px rgba(78, 240, 160, 0.3);}
-.mode-chip.sta-connected{background:linear-gradient(135deg, #4ef0a0, #2ed18a); color: #07213a; box-shadow: 0 0 15px rgba(78, 240, 160, 0.3);}
-.mode-chip.online-connected{background:linear-gradient(135deg, #4ef0a0, #2ed18a); color: #07213a; box-shadow: 0 0 15px rgba(78, 240, 160, 0.3);}
 
-/* Default mode chip styling (no background until connected) */
-#apModeBtn, #staModeBtn, #onlineModeBtn { 
-  background: rgba(255,255,255,0.02); 
-  border: 1px solid rgba(255,255,255,0.03);
-  color: var(--muted2);
-  padding: 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.3s ease;
-}
 
-/* AP/STA Mode Button Animations */
-.mode-chip {
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
 
 .mode-chip:hover {
   transform: translateY(-2px);
@@ -401,21 +383,11 @@ body{padding:0;margin:0}
   transform: scale(0.95);
 }
 
-@keyframes modeSelectPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
 
-@keyframes modeActivate {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(127, 177, 255, 0.7); }
-  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(127, 177, 255, 0); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(127, 177, 255, 0); }
-}
 
-.mode-chip.activation-animation {
-  animation: modeActivate 0.6s ease;
-}
+
+
+
 
 /* Notification Modal Slide Down Animation */
 @keyframes slideDown {
@@ -471,7 +443,7 @@ body{padding:0;margin:0}
   transform-origin: 50% 50%;
 }
 
-.btn.pressed:after, .ghost.pressed:after, .setup-btn.pressed:after {
+.btn.pressed:after, .ghost.pressed:after, .setup-btn.pressed:after, .wifi-btn.pressed:after {
   animation: ripple 0.6s ease-out;
 }
 
@@ -481,7 +453,26 @@ body{padding:0;margin:0}
   color: #07213a;
   font-weight: 700;
   border: none;
+}
+
+/* WiFi buttons */
+.wifi-btn {
+  position: relative;
+  overflow: hidden;
   box-shadow: 0 8px 30px rgba(125,150,255,0.06);
+}
+
+.wifi-btn:after {
+  content: "";
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .ghost {
@@ -713,7 +704,8 @@ body{padding:0;margin:0}
         <div class="wifi-arc wifi-a2"></div>
         <div class="wifi-arc wifi-a1"></div>
         <div class="wifi-dot"></div>
-      </div>    </div>
+      </div>
+    </div>
   </div>
 
   <!-- presence card -->
@@ -861,7 +853,10 @@ body{padding:0;margin:0}
         </div>
         
         <div class="tools-grid" style="margin-top:8px">
-          <!-- Actual functionality will be handled by ESP32 -->
+          <button id="refreshBtn" class="btn">Refresh Device</button>
+          <button id="restartBtn" class="ghost">Restart Device</button>
+          <button id="clearLogsBtn" class="ghost">Clear Logs</button>
+          <button id="exportConfigBtn" class="btn">Export Config</button>
         </div>
 
         <div class="card" style="margin-top:12px">
@@ -880,12 +875,12 @@ body{padding:0;margin:0}
   <div class="bottom-nav" role="navigation">
     <div class="nav-item active" data-page="home"><div class="home-icon-modern"></div><div style="margin-top:8px;font-size:13px">Home</div></div>
     <div class="nav-item" data-page="timer"><div class="clock-icon-modern"></div><div style="margin-top:8px;font-size:13px">Timer</div></div>
-    <div class="nav-item" data-page="settings"><div class="gear-icon-modern"><div class="gear-outer"></div><div class="gear-inner"></div><div class="gear-tooth t1"></div><div class="gear-tooth t2"></div><div class="gear-tooth t3"></div><div class="gear-tooth t4"></div><div class="gear-tooth t5"></div><div class="gear-tooth t6"></div><div class="gear-tooth t7"></div><div class="gear-tooth t8"></div><div class="gear-tooth t9"></div><div class="gear-tooth t10"></div><div class="gear-tooth t11"></div><div class="gear-tooth t12"></div></div><div style="margin-top:8px;font-size:13px">Settings</div></div>
+    <div class="nav-item" data-page="settings"><div class="gear-icon-modern"><div class="gear-tooth t1"></div><div class="gear-tooth t2"></div><div class="gear-tooth t3"></div><div class="gear-tooth t4"></div><div class="gear-tooth t5"></div><div class="gear-tooth t6"></div><div class="gear-tooth t7"></div><div class="gear-tooth t8"></div><div class="gear-tooth t9"></div><div class="gear-tooth t10"></div><div class="gear-tooth t11"></div><div class="gear-tooth t12"></div></div><div style="margin-top:8px;font-size:13px">Settings</div></div>
   </div>
 </div>
 
 <!-- Centered Mode Setup modal -->
-<div id="modeModal" class="modal-back">
+<div id="modeModal" class="modal-back" style="display: none;">
   <div class="modal" role="dialog" aria-modal="true">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div style="font-weight:700" id="modeModalTitle">Mode Setup</div>
@@ -899,7 +894,7 @@ body{padding:0;margin:0}
 </div>
 
 <!-- Blynk-only mode notification -->
-<div id="wifiModal" class="modal-back">
+<div id="wifiModal" class="modal-back" style="display: none;">
   <div class="modal">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div style="font-weight:700">Blynk-Only Mode</div>
@@ -916,7 +911,8 @@ body{padding:0;margin:0}
       <button id="closeWifi" class="ghost">Close</button>
     </div>
   </div>
-</div><!-- Notification Modal -->
+</div>
+<!-- Notification Modal -->
 <div id="notificationModal" class="modal-back" style="align-items: flex-start; padding-top: 20px; display: none;">
   <div class="modal" style="height: 80vh; display: flex; flex-direction: column; margin-top: 0;">
     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -952,6 +948,7 @@ body{padding:0;margin:0}
 
 
 <script>
+console.log('Script is loading...');
 /* ---------- State & helpers ---------- */
 const STORAGE = 'smart_ui_final_v1';
 
@@ -960,33 +957,43 @@ const SecurityModule = {
   // Simple encryption for client-side storage (not meant for high security, but better than plain text)
   encrypt: function(text, key) {
     if (!text) return '';
-    const encoder = new TextEncoder();
-    const data = encoder.encode(text);
-    const keyData = encoder.encode(key);
-    
-    // Simple XOR encryption with key cycling
-    let result = new Uint8Array(data.length);
-    for (let i = 0; i < data.length; i++) {
-      result[i] = data[i] ^ keyData[i % keyData.length];
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      const keyData = encoder.encode(key);
+      
+      // Simple XOR encryption with key cycling
+      let result = new Uint8Array(data.length);
+      for (let i = 0; i < data.length; i++) {
+        result[i] = data[i] ^ keyData[i % keyData.length];
+      }
+      
+      // Convert to base64 for storage
+      return btoa(String.fromCharCode(...result));
+    } catch (e) {
+      console.warn('Failed to encrypt token:', e.message);
+      return '';
     }
-    
-    // Convert to base64 for storage
-    return btoa(String.fromCharCode(...result));
   },
   
   decrypt: function(encryptedText, key) {
     if (!encryptedText) return '';
-    const decoder = new TextDecoder();
-    const data = new Uint8Array(atob(encryptedText).split('').map(c => c.charCodeAt(0)));
-    const keyData = new TextEncoder().encode(key);
-    
-    // XOR decryption with key cycling
-    let result = new Uint8Array(data.length);
-    for (let i = 0; i < data.length; i++) {
-      result[i] = data[i] ^ keyData[i % keyData.length];
+    try {
+      const decoder = new TextDecoder();
+      const data = new Uint8Array(atob(encryptedText).split('').map(c => c.charCodeAt(0)));
+      const keyData = new TextEncoder().encode(key);
+      
+      // XOR decryption with key cycling
+      let result = new Uint8Array(data.length);
+      for (let i = 0; i < data.length; i++) {
+        result[i] = data[i] ^ keyData[i % keyData.length];
+      }
+      
+      return decoder.decode(result);
+    } catch (e) {
+      console.warn('Failed to decrypt token:', e.message);
+      return '';
     }
-    
-    return decoder.decode(result);
   },
   
   // Generate a device-specific key based on browser fingerprint
@@ -1033,7 +1040,7 @@ let apiToken = '';
 // Get API token from device
 async function getApiToken() {
   try {
-    const hosts = ['smartlight.local', '192.168.4.1'];
+    const hosts = [];
     for (const h of hosts) {
       try {
         // Use https:// if page is loaded over HTTPS, otherwise http://
@@ -1105,6 +1112,7 @@ function renderLights(){
   state.lights.slice(0,6).forEach(l=>{
     const el = document.createElement('div'); el.className = 'light-block' + (l.on? ' on':'');
     el.innerHTML = `<div class="circle" data-id="${l.id}"><div class="bulb">💡</div><div class="inner-status">${l.on?'ON':'OFF'}</div></div><div class="nameBelow">${escapeHtml(l.name)}</div>`;
+    el.querySelector('.circle').addEventListener('click', ()=>sendToggleWS(l.id));
     el.querySelector('.circle').addEventListener('contextmenu', e=>{ e.preventDefault(); renamePrompt(l.id); });
     grid.appendChild(el);
   });
@@ -1112,6 +1120,7 @@ function renderLights(){
   state.lights.slice(6).forEach(l=>{
     const el = document.createElement('div'); el.className = 'light-block' + (l.on? ' on':'');
     el.innerHTML = `<div class="circle" data-id="${l.id}"><div class="bulb">💡</div><div class="inner-status">${l.on?'ON':'OFF'}</div></div><div class="nameBelow">${escapeHtml(l.name)}</div>`;
+    el.querySelector('.circle').addEventListener('click', ()=>sendToggleWS(l.id));
     el.querySelector('.circle').addEventListener('contextmenu', e=>{ e.preventDefault(); renamePrompt(l.id); });
     lastRow.appendChild(el);
   });
@@ -1267,6 +1276,7 @@ $('#pirDelay').addEventListener('input', e=>{ state.pirDelay = parseInt(e.target
 $('#rcwlRange').addEventListener('input', e=>{ state.rcwlRange = parseInt(e.target.value); $('#rcwlVal').textContent = state.rcwlRange + '%'; saveState(); });
 
 function addButtonAnimation(buttonId) {
+  console.log('addButtonAnimation called for:', buttonId);
   const btn = $(`#${buttonId}`);
   if (btn) {
     btn.classList.add('pressed');
@@ -1279,7 +1289,7 @@ function addButtonAnimation(buttonId) {
 $('#blynkConnectBtn').addEventListener('click', function() {
   addButtonAnimation('blynkConnectBtn');
   const token = $('#blynkTokenInput').value.trim();
-  const hardcodedToken = 'GO_I2vtWFmQbPclq0JU7Wy5CWA9aXtsO'; // Your Blynk auth token
+  const hardcodedToken = '4uYijCw6szawn3uskltxhM3Qr-U_Pgvg'; // Your Blynk auth token
   
   // Generate device-specific key for encryption
   const deviceKey = SecurityModule.generateDeviceKey();
@@ -1307,7 +1317,7 @@ $('#blynkConnectBtn').addEventListener('click', function() {
 });
 
 function disconnectBlynk() {
-  const hardcodedToken = 'GO_I2vtWFmQbPclq0JU7Wy5CWA9aXtsO'; // Your Blynk auth token
+  const hardcodedToken = '4uYijCw6szawn3uskltxhM3Qr-U_Pgvg'; // Your Blynk auth token
   
   // Generate device-specific key for decryption
   const deviceKey = SecurityModule.generateDeviceKey();
@@ -1369,26 +1379,366 @@ $('#blynkDisconnectBtn').addEventListener('click', function() {
 
 /* Rename list UI inside settings (no modal) */
 function renderRenameList(){ const wrap = $('#renameList'); wrap.innerHTML=''; state.lights.forEach(l=>{ const row = document.createElement('div'); row.className='rename-row'; row.innerHTML = `<div style="width:28px">${l.id+1}.</div><input data-rename="${l.id}" value="${escapeHtml(l.name)}">`; wrap.appendChild(row); }); }
-$('#saveRename').addEventListener('click', function(){ 
-  addButtonAnimation('saveRename');
-  $$('input[data-rename]').forEach(inp=>{ const id = +inp.dataset.rename; const v = inp.value.trim(); if(v) state.lights[id].name = v; }); saveState(); renderLights(); renderRenameList(); populateTimerSelect(); log('Saved light names'); 
-});
-$('#resetNames').addEventListener('click', function(){ 
-  addButtonAnimation('resetNames');
-  showMobileNotification('Confirm', 'Defaults reset'); state = defaultState(); saveState(); initUI(); log('Reset to defaults'); 
-});
+
+// Add event listeners for rename functionality
+function initRenameListeners() {
+  const saveRenameBtn = $('#saveRename');
+  const resetNamesBtn = $('#resetNames');
+  
+  if (saveRenameBtn) {
+    saveRenameBtn.addEventListener('click', function(){ 
+      addButtonAnimation('saveRename');
+      $$('input[data-rename]').forEach(inp=>{ const id = +inp.dataset.rename; const v = inp.value.trim(); if(v) state.lights[id].name = v; }); saveState(); renderLights(); renderRenameList(); populateTimerSelect(); log('Saved light names'); 
+    });
+  }
+  
+  if (resetNamesBtn) {
+    resetNamesBtn.addEventListener('click', function(){ 
+      addButtonAnimation('resetNames');
+      showMobileNotification('Confirm', 'Defaults reset'); state = defaultState(); saveState(); initUI(); log('Reset to defaults'); 
+    });
+  }
+}
+
+// Add event listeners for tools functionality
+function initToolsListeners() {
+  const refreshBtn = $('#refreshBtn');
+  const restartBtn = $('#restartBtn');
+  const clearLogsBtn = $('#clearLogsBtn');
+  const exportConfigBtn = $('#exportConfigBtn');
+  
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', function() {
+      addButtonAnimation('refreshBtn');
+      // In Blynk-only mode, we refresh by requesting state
+      if (blynkConnected) {
+        // Request state update from device via Blynk
+        sendToBlynk('V12', 1); // Request device status
+        showMobileNotification('Refresh', 'Device state refresh requested');
+      } else {
+        showMobileNotification('Error', 'Not connected to Blynk');
+      }
+    });
+  }
+  
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function() {
+      addButtonAnimation('restartBtn');
+      if (blynkConnected) {
+        // Send restart command via Blynk
+        sendToBlynk('V21', 1); // Assuming V21 for restart command
+        showMobileNotification('Restart', 'Device restart command sent');
+      } else {
+        showMobileNotification('Error', 'Not connected to Blynk');
+      }
+    });
+  }
+  
+  if (clearLogsBtn) {
+    clearLogsBtn.addEventListener('click', function() {
+      addButtonAnimation('clearLogsBtn');
+      state.logs = [];
+      saveState();
+      renderLogs();
+      showMobileNotification('Logs', 'Logs cleared');
+    });
+  }
+  
+  if (exportConfigBtn) {
+    exportConfigBtn.addEventListener('click', function() {
+      addButtonAnimation('exportConfigBtn');
+      // Export configuration as JSON
+      const config = {
+        lights: state.lights,
+        pir: state.pir,
+        rcwl: state.rcwl,
+        pirDelay: state.pirDelay,
+        rcwlRange: state.rcwlRange
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "smartlight_config.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      showMobileNotification('Export', 'Configuration exported');
+    });
+  }
+}
+
+// Add event listeners for settings tabs
+function initSettingsTabListeners() {
+  // Set initial state - Sensors tab active by default
+  const settingsTabs = $$('.settings-tab');
+  settingsTabs.forEach(function(tab) {
+    // Remove active class from all tabs initially
+    tab.classList.remove('active');
+    
+    // Set Sensors tab as active by default
+    if (tab.dataset.tab === 'tabSensors') {
+      tab.classList.add('active');
+    }
+  });
+  
+  // Hide non-active tabs initially
+  $('#tabRename').style.display = 'none';
+  $('#tabTools').style.display = 'none';
+  
+  // Add event listeners for tab clicks
+  settingsTabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      // Remove active class from all tabs
+      settingsTabs.forEach(function(t) {
+        t.classList.remove('active');
+      });
+      // Add active class to clicked tab
+      tab.classList.add('active');
+      
+      // Hide all tab content
+      $('#tabSensors').style.display = 'none';
+      $('#tabRename').style.display = 'none';
+      $('#tabTools').style.display = 'none';
+      
+      // Show the corresponding tab content
+      const tabId = tab.dataset.tab;
+      if (tabId === 'tabSensors') {
+        $('#tabSensors').style.display = 'block';
+      }
+      else if (tabId === 'tabRename') {
+        $('#tabRename').style.display = 'block';
+      }
+      else if (tabId === 'tabTools') {
+        $('#tabTools').style.display = 'block';
+      }
+    });
+  });
+}
 
 /* Logs render (latest 10) */
 function renderLogs(autoScroll){ const ul = $('#logs'); ul.innerHTML=''; state.logs.slice(0,10).forEach(l=>{ const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); }); if(autoScroll) { ul.scrollTop = 0; } }
 
-// Load Blynk token on page load
+// Initialize page navigation
+function initPageNavigation() {
+  // Add click event listeners to navigation items
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(item => {
+    item.addEventListener('click', function() {
+      const page = this.getAttribute('data-page');
+      showPage(page);
+    });
+  });
+  
+  // Show home page by default
+  showPage('home');
+}
+
+// Show specific page and hide others
+function showPage(pageName) {
+  // Hide all pages
+  document.getElementById('homePage').style.display = 'none';
+  document.getElementById('timerPage').style.display = 'none';
+  document.getElementById('settingsPage').style.display = 'none';
+  
+  // Show the requested page
+  document.getElementById(pageName + 'Page').style.display = 'block';
+  
+  // Update active nav item
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('active');
+    if (item.getAttribute('data-page') === pageName) {
+      item.classList.add('active');
+    }
+  });
+}
+
+// Load Blynk token on page load and initialize UI
+console.log('About to add DOMContentLoaded listener');
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM Content Loaded');
+  // Initialize UI first
+  initUI();
+  
+  // Initialize page navigation
+  initPageNavigation();
+  
+  // Add event listeners for notification and WiFi buttons
+  /* Wi-Fi modal (center) - Blynk-only mode */
+  const wifiBtn = $('#wifiBtn');
+  console.log('Trying to attach event listener to wifiBtn:', wifiBtn);
+  if (wifiBtn) {
+    wifiBtn.addEventListener('click', function() { 
+      console.log('WiFi button clicked');
+      addButtonAnimation('wifiBtn');
+      console.log('About to show wifiModal');
+      $('#wifiModal').style.display='flex'; 
+      document.body.style.overflow='hidden'; 
+      console.log('wifiModal should be visible now');
+    });
+  } else {
+    console.log('wifiBtn element not found!');
+  }
+  
+  const notificationBtn = $('#notificationBtn');
+  console.log('Trying to attach event listener to notificationBtn:', notificationBtn);
+  if (notificationBtn) {
+    notificationBtn.addEventListener('click', function() { 
+      console.log('Notification button clicked');
+      addButtonAnimation('notificationBtn');
+      updateNotificationModal();
+      console.log('About to show notificationModal');
+      $('#notificationModal').style.display='flex'; document.body.style.overflow='hidden'; 
+      console.log('Notification modal display set to flex');
+      
+      // Add slide down animation class
+      const modal = $('#notificationModal .modal');
+      if (modal) {
+        modal.classList.add('notification-modal-slide-down');
+      }
+      
+      // Start periodic updates while modal is open
+      const notificationInterval = setInterval(updateNotificationModal, 2000);
+      
+      // Stop updates when modal is closed
+      const stopUpdates = () => clearInterval(notificationInterval);
+      
+      // Store interval ID in a data attribute for later access
+      $('#notificationModal').dataset.intervalId = notificationInterval;
+    });
+  }
+  
+  // Add event listener for close notification button
+  const closeNotificationBtn = $('#closeNotification');
+  if (closeNotificationBtn) {
+    closeNotificationBtn.addEventListener('click', function() {
+      console.log('Close notification button clicked');
+      addButtonAnimation('closeNotification');
+      
+      // Stop updates
+      const notificationModal = $('#notificationModal');
+      if (notificationModal && notificationModal.dataset.intervalId) {
+        clearInterval(parseInt(notificationModal.dataset.intervalId));
+        delete notificationModal.dataset.intervalId;
+      }
+      
+      // Close modal
+      notificationModal.style.display='none';
+      document.body.style.overflow='';
+      
+      // Remove animation class when closing
+      const modal = $('#notificationModal .modal');
+      if (modal) {
+        modal.classList.remove('notification-modal-slide-down');
+      }
+    });
+  }
+  
+  // Add event listener for clicking on modal backdrop
+  const notificationModal = $('#notificationModal');
+  if (notificationModal) {
+    notificationModal.addEventListener('click', (e) => {
+      if (e.target === notificationModal) {
+        console.log('Notification modal backdrop clicked');
+        
+        // Stop updates
+        if (notificationModal.dataset.intervalId) {
+          clearInterval(parseInt(notificationModal.dataset.intervalId));
+          delete notificationModal.dataset.intervalId;
+        }
+        
+        // Close modal
+        notificationModal.style.display='none';
+        document.body.style.overflow='';
+        
+        // Remove animation class when closing
+        const modal = $('#notificationModal .modal');
+        if (modal) {
+          modal.classList.remove('notification-modal-slide-down');
+        }
+      }
+    });
+  }
+  
+  const closeWifiBtn = $('#closeWifi');
+  if (closeWifiBtn) {
+    closeWifiBtn.addEventListener('click', function() { 
+      addButtonAnimation('closeWifi');
+      $('#wifiModal').style.display='none'; document.body.style.overflow=''; 
+    });
+  }
+  
+  const scanWifiBtn = $('#scanWifi');
+  if (scanWifiBtn) {
+    scanWifiBtn.addEventListener('click', function() {
+      addButtonAnimation('scanWifi');
+      // Removed demo WiFi scanning code
+      // This will be handled by the ESP32 connector
+    });
+  }
+});
+
+// Blynk-only mode functionality
+let currentMode = 'blynk'; // Only Blynk mode
+
+// Initialize mode for Blynk-only
+// Combined with main DOMContentLoaded handler above
+// updateModeUI('BLYNK'); // Moved to after blynkConnected is initialized
+
+// Simplified function to update UI for Blynk-only mode
+function updateModeUI(mode) {
+  // Update connection status display
+  const wifiBtn = document.getElementById('wifiBtn');
+  if (blynkConnected) {
+    wifiBtn.classList.remove('disconnected');
+    wifiBtn.classList.add('connected');
+    document.getElementById('connectionStatus').textContent = 'Connected to Blynk';
+  } else {
+    wifiBtn.classList.remove('connected');
+    wifiBtn.classList.add('disconnected');
+    document.getElementById('connectionStatus').textContent = 'Disconnected from Blynk';
+  }
+}
+
+// Simplified connection function for Blynk-only mode
+async function tryConnectWebSocket() {
+  // In Blynk-only mode, we don't connect directly to the device
+  // All communication happens through Blynk
+  console.log('Blynk-only mode: Direct device connection disabled');
+  
+  // Update UI to reflect Blynk-only mode
+  const wifiBtn = document.getElementById('wifiBtn');
+  if (blynkConnected) {
+    wifiBtn.classList.remove('disconnected');
+    wifiBtn.classList.add('connected');
+    document.getElementById('connectionStatus').textContent = 'Connected to Blynk (Device controlled via cloud)';
+  } else {
+    wifiBtn.classList.remove('connected');
+    wifiBtn.classList.add('disconnected');
+    document.getElementById('connectionStatus').textContent = 'Connect to Blynk for device control';
+  }
+  
+  return blynkConnected;
+}
+
+/* Nav switching */
+$$('.nav-item').forEach(function(it) {
+  it.addEventListener('click', function() {
+    $$('.nav-item').forEach(function(x) {
+      x.classList.remove('active');
+    });
+    it.classList.add('active');
+    const p = it.dataset.page;
+    $('#homePage').style.display = p==='home' ? 'block':'none';
+    $('#timerPage').style.display = p==='timer' ? 'block':'none';
+    $('#settingsPage').style.display = p==='settings' ? 'block':'none';
+  });
+  
   // Check URL parameters for token
   const urlParams = new URLSearchParams(window.location.search);
   const tokenFromUrl = urlParams.get('blynk_token');
   
   // Hardcoded token for your specific setup
-  const hardcodedToken = 'GO_I2vtWFmQbPclq0JU7Wy5CWA9aXtsO';
+  const hardcodedToken = '4uYijCw6szawn3uskltxhM3Qr-U_Pgvg';
   
   // Generate device-specific key for encryption
   const deviceKey = SecurityModule.generateDeviceKey();
@@ -1434,134 +1784,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 1800000); // Refresh every 30 minutes
 });
 
-/* Wi-Fi modal (center) - Blynk-only mode */
-$('#wifiBtn').addEventListener('click', function() { 
-  addButtonAnimation('wifiBtn');
-  $('#wifiModal').style.display='flex'; document.body.style.overflow='hidden'; 
-});
-$('#notificationBtn').addEventListener('click', function() { 
-  addButtonAnimation('notificationBtn');
-  updateNotificationModal();
-  $('#notificationModal').style.display='flex'; document.body.style.overflow='hidden'; 
-  
-  // Add slide down animation class
-  const modal = $('#notificationModal .modal');
-  modal.classList.add('notification-modal-slide-down');
-  
-  // Start periodic updates while modal is open
-  const notificationInterval = setInterval(updateNotificationModal, 2000);
-  
-  // Stop updates when modal is closed
-  const stopUpdates = () => clearInterval(notificationInterval);
-  
-  // Close modal functions
-  const closeModal = () => {
-    stopUpdates();
-    $('#notificationModal').style.display='none';
-    document.body.style.overflow='';
-    // Remove animation class when closing
-    if (modal) {
-      modal.classList.remove('notification-modal-slide-down');
-    }
-  };
-  
-  $('#closeNotification').addEventListener('click', function() {
-    addButtonAnimation('closeNotification');
-    closeModal();
-  });
-  
-  $('#notificationModal').addEventListener('click', (e) => {
-    if (e.target === $('#notificationModal')) closeModal();
-  });
-});$('#closeWifi').addEventListener('click', function() { 
-  addButtonAnimation('closeWifi');
-  $('#wifiModal').style.display='none'; document.body.style.overflow=''; 
-});
-$('#scanWifi').addEventListener('click', function() {
-  addButtonAnimation('scanWifi');
-  // Removed demo WiFi scanning code
-  // This will be handled by the ESP32 connector
-});
-
-// Blynk-only mode functionality
-let currentMode = 'blynk'; // Only Blynk mode
-
-// Initialize mode for Blynk-only
-document.addEventListener('DOMContentLoaded', function() {
-  // Set initial mode to Blynk
-  updateModeUI('BLYNK');
-});
-
-// Simplified function to update UI for Blynk-only mode
-function updateModeUI(mode) {
-  // Update connection status display
-  const wifiBtn = document.getElementById('wifiBtn');
-  if (blynkConnected) {
-    wifiBtn.classList.remove('disconnected');
-    wifiBtn.classList.add('connected');
-    document.getElementById('connectionStatus').textContent = 'Connected to Blynk';
-  } else {
-    wifiBtn.classList.remove('connected');
-    wifiBtn.classList.add('disconnected');
-    document.getElementById('connectionStatus').textContent = 'Disconnected from Blynk';
-  }
-}
-
-// Simplified connection function for Blynk-only mode
-async function tryConnectWebSocket() {
-  // In Blynk-only mode, we don't connect directly to the device
-  // All communication happens through Blynk
-  console.log('Blynk-only mode: Direct device connection disabled');
-  
-  // Update UI to reflect Blynk-only mode
-  const wifiBtn = document.getElementById('wifiBtn');
-  if (blynkConnected) {
-    wifiBtn.classList.remove('disconnected');
-    wifiBtn.classList.add('connected');
-    document.getElementById('connectionStatus').textContent = 'Connected to Blynk (Device controlled via cloud)';
-  } else {
-    wifiBtn.classList.remove('connected');
-    wifiBtn.classList.add('disconnected');
-    document.getElementById('connectionStatus').textContent = 'Connect to Blynk for device control';
-  }
-  
-  return blynkConnected;
-}/* Nav switching */
-$$('.nav-item').forEach(function(it) {
-  it.addEventListener('click', function() {
-    $$('.nav-item').forEach(function(x) {
-      x.classList.remove('active');
-    });
-    it.classList.add('active');
-    const p = it.dataset.page;
-    $('#homePage').style.display = p==='home' ? 'block':'none';
-    $('#timerPage').style.display = p==='timer' ? 'block':'none';
-    $('#settingsPage').style.display = p==='settings' ? 'block':'none';
-  });
-});
-
-/* Settings tab switching */
-$$('.settings-tab').forEach(function(tab) {
-  tab.addEventListener('click', function() {
-    // Remove active class from all tabs
-    $$('.settings-tab').forEach(function(t) {
-      t.classList.remove('active');
-    });
-    // Add active class to clicked tab
-    tab.classList.add('active');
-    
-    // Hide all tab content
-    $('#tabSensors').style.display = 'none';
-    $('#tabRename').style.display = 'none';
-    $('#tabTools').style.display = 'none';
-    
-    // Show the corresponding tab content
-    const tabId = tab.dataset.tab;
-    if (tabId === 'tabSensors') $('#tabSensors').style.display = 'block';
-    else if (tabId === 'tabRename') $('#tabRename').style.display = 'block';
-    else if (tabId === 'tabTools') $('#tabTools').style.display = 'block';
-  });
-});
 
 /* Populate timer select */
 function populateTimerSelect(){ const sel = $('#tLight'); sel.innerHTML=''; state.lights.forEach(l=>{ const o = document.createElement('option'); o.value = l.id; o.textContent = l.name; sel.appendChild(o); }); }
@@ -1573,7 +1795,7 @@ $$('.modal-back').forEach(m=> m.addEventListener('click', ev=> { if(ev.target ==
 document.addEventListener('keydown', e=> { if(e.key==='Escape'){ $$('.modal-back').forEach(m=> m.style.display='none'); document.body.style.overflow=''; } });
 
 /* Init UI */
-function initUI(){ renderLights(); renderRenameList(); renderSchedules(); renderTimers(); renderLogs(); populateTimerSelect(); if(state.wifiConnected) { $('#wifiBtn').classList.add('connected'); $('#wifiBtn').classList.remove('disconnected'); } else { $('#wifiBtn').classList.add('disconnected'); $('#wifiBtn').classList.remove('connected'); } $('#pirToggle').checked = !!state.pir; $('#rcwlToggle').checked = !!state.rcwl; $('#pirDelay').value = state.pirDelay; $('#rcwlRange').value = state.rcwlRange; $('#rcwlVal').textContent = state.rcwlRange + '%'; }
+function initUI(){ console.log('initUI called'); renderLights(); renderRenameList(); renderSchedules(); renderTimers(); renderLogs(); populateTimerSelect(); if(state.wifiConnected) { $('#wifiBtn').classList.add('connected'); $('#wifiBtn').classList.remove('disconnected'); } else { $('#wifiBtn').classList.add('disconnected'); $('#wifiBtn').classList.remove('connected'); } $('#pirToggle').checked = !!state.pir; $('#rcwlToggle').checked = !!state.rcwl; $('#pirDelay').value = state.pirDelay; $('#rcwlRange').value = state.rcwlRange; $('#rcwlVal').textContent = state.rcwlRange + '%'; initRenameListeners(); initToolsListeners(); initSettingsTabListeners(); }
 
 // Trigger logo animation on page load
 window.addEventListener('DOMContentLoaded', function() {
@@ -1590,8 +1812,6 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-initUI();
-
 // Try to connect to the ESP32 device
 // Add a longer delay to ensure the ESP32 has time to fully start up
 setTimeout(() => {
@@ -1607,10 +1827,10 @@ setTimeout(() => {
 // Function to check if mDNS resolution is working
 async function checkMdnsResolution() {
   try {
-    console.log('Checking mDNS resolution for smartlight.local');
+    console.log('mDNS resolution checks disabled in Blynk-only mode');
     // Use https:// if page is loaded over HTTPS, otherwise http://
     const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    const response = await fetch(`${protocol}//smartlight.local/api/wifi/status`, { 
+    const response = await fetch('/api/wifi/status', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -1633,15 +1853,14 @@ async function checkMdnsResolution() {
   }
 }
 
-/* SmartLight ESP connector — auto-discover + WiFi API + WebSocket handlers
-   - Tries: ws://smartlight.local/ws -> ws://<sta_ip>/ws -> ws://192.168.4.1/ws
-   - Uses REST endpoints: /api/wifi/scan, /api/wifi/connect, /api/wifi/status, /api/wifi/forget
-   - If WS connects, updates UI state using messages from ESP
-   - This script is safe to include when UI runs from GitHub Pages
+/* SmartLight ESP connector — Blynk-only mode
+   - All device communication happens through Blynk cloud
+   - No local WiFi API or WebSocket connections
+   - This script is designed for Blynk-only architecture
    
    Blynk Integration:
    - Template Name: smartboard
-   - Auth Token: GO_I2vtWFmQbPclq0JU7Wy5CWA9aXtsO
+   - Auth Token: 4uYijCw6szawn3uskltxhM3Qr-U_Pgvg
    - V0-V7: Individual light control (V0 = Light 1, V1 = Light 2, etc.)
    - V10: Presence sensor status
    - V11: WiFi signal strength
@@ -1665,6 +1884,9 @@ async function checkMdnsResolution() {
 let blynkWebSocket = null;
 let blynkConnected = false;
 let blynkToken = '';
+
+// Initialize mode UI after blynkConnected is defined
+updateModeUI('BLYNK');
 
 function initBlynk(token) {
   if (!token) return;
@@ -1696,7 +1918,7 @@ function initBlynk(token) {
       showPopupNotification('Blynk Connected', 'Successfully connected to Blynk cloud service');
       
       // Check if this is the hardcoded token connection
-      const hardcodedToken = 'GO_I2vtWFmQbPclq0JU7Wy5CWA9aXtsO';
+      const hardcodedToken = '4uYijCw6szawn3uskltxhM3Qr-U_Pgvg';
       let showWelcome = false;
       if (blynkToken === hardcodedToken) {
         console.log('Successfully connected to Blynk with hardcoded token for template: smartboard');
@@ -2104,20 +2326,18 @@ function updateBlynkModeIndicator(mode) {
   setBlynkProperty('V20', 'label', modeNames[mode] || 'Unknown Mode');
 }
 
-// Primary hosts (mDNS + AP fallback)
-const MDNS_HOST = 'smartlight.local';
-const AP_HOST = '192.168.4.1';
+// In Blynk-only mode, we don't use mDNS hosts
 
 // current socket
 let socket = null;
 let socketReady = false;
 let lastTried = [];
 
-// small helper - try to connect ws to host
+// In Blynk-only mode, we don't attempt local WebSocket connections
 function tryWsHost(host, timeout=5000) {
-  return new Promise((resolve) => {
-    try {
-      console.debug('Attempting WebSocket connection to', host);
+  console.log('Local WebSocket connections disabled in Blynk-only mode');
+  return Promise.resolve({ok:false, error: 'Local WebSocket connections disabled in Blynk-only mode'});
+
       // Use wss:// if page is loaded over HTTPS, otherwise ws://
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const url = `${protocol}//${host}/ws`;
@@ -2156,158 +2376,32 @@ function tryWsHost(host, timeout=5000) {
         }
       };
       setTimeout(()=> tidy(false, 'Connection timeout'), timeout);
-    } catch(e) { 
-      console.error('Exception in tryWsHost for', host, e);
-      // Provide more detailed error messages to the user
-      let errorMsg = e.message;
-      if (e.message && e.message.includes('insecure')) {
-        errorMsg = 'Security error: Cannot connect to insecure WebSocket from secure page. Make sure your device supports WSS.';
-      } else if (e.message && e.message.includes('NAME_NOT_RESOLVED')) {
-        errorMsg = 'Device not found: Check if the device is powered on and connected to the same network.';
-      }
-      resolve({ok:false, error: errorMsg}); 
-    }
-  });
 }
 
-// Attempt to connect in order: mDNS -> discovered STA -> AP
+// In Blynk-only mode, we don't attempt local connections
 async function tryConnectWebSocket() {
-  // if already connected, return
-  if (socket && socketReady) return true;
-
-  // Update UI to show attempting connection
+  // Update UI to show Blynk-only mode
   const wifiBtn = document.getElementById('wifiBtn');
-  wifiBtn.classList.remove('connected', 'disconnected');
-  wifiBtn.classList.add('connecting');
-  document.getElementById('wifiStatusText').textContent = 'Connecting...';
-  document.getElementById('connectionStatus').textContent = 'Connecting...';
-
-  // 1) try mDNS
-  try {
-    console.debug('Trying mDNS host', MDNS_HOST);
-    document.getElementById('connectionStatus').textContent = `Trying mDNS host: ${MDNS_HOST}...`;
-    const r = await tryWsHost(MDNS_HOST, 5000);
-    if (r.ok) {
-      console.log('Successfully connected to mDNS host', MDNS_HOST);
-      document.getElementById('connectionStatus').textContent = `Connected to mDNS host: ${MDNS_HOST}`;
-      useSocket(r.ws, MDNS_HOST);
-      return true;
-    } else {
-      console.warn('Failed to connect to mDNS host', MDNS_HOST);
-      document.getElementById('connectionStatus').textContent = `Failed to connect to mDNS host: ${MDNS_HOST}`;
-    }
-  } catch(e){ 
-    console.warn('mDNS try failed', e);
-    document.getElementById('connectionStatus').textContent = `mDNS connection failed: ${e.message}`;
-  }
-
-  // 2) try to discover sta IP via wifi status on mDNS or AP host
-  try {
-    document.getElementById('connectionStatus').textContent = 'Checking WiFi status...';
-    const hosts = [MDNS_HOST, AP_HOST];
-    for (const h of hosts) {
-      try {
-        console.debug('Checking WiFi status on host', h);
-        document.getElementById('connectionStatus').textContent = `Checking WiFi status on: ${h}...`;
-        // Use https:// if page is loaded over HTTPS, otherwise http://
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        const url = `${protocol}//${h}/api/wifi/status`;
-        const response = await fetch(url);
-        console.debug('WiFi status response from', h, response.status);
-        if (response.ok) {
-          const info = await response.json();
-          console.debug('WiFi status info from', h, info);
-          document.getElementById('connectionStatus').textContent = `WiFi status from ${h}: ${info.sta_connected ? 'Connected' : 'Disconnected'}`;
-          if (info && info.sta_connected && info.sta_ip) {
-            // Update connection status with additional info
-            document.getElementById('connectionStatus').textContent = 
-              `Connected to ${info.ssid || 'WiFi'} (${info.sta_ip}) RSSI: ${info.rssi || 'N/A'}`;
-            try {
-              document.getElementById('connectionStatus').textContent = `Trying to connect to STA IP: ${info.sta_ip}...`;
-              const r2 = await tryWsHost(info.sta_ip, 5000);
-              if (r2.ok) { 
-                console.log('Successfully connected to STA IP', info.sta_ip);
-                document.getElementById('connectionStatus').textContent = `Connected to STA IP: ${info.sta_ip}`;
-                useSocket(r2.ws, info.sta_ip); 
-                return true; 
-              } else {
-                console.warn('Failed to connect to STA IP', info.sta_ip);
-                document.getElementById('connectionStatus').textContent = `Failed to connect to STA IP: ${info.sta_ip}`;
-              }
-            } catch(e){ console.warn('STA IP connection failed', e); }
-          }
-          break; // If we got a response (even if not connected), don't try other hosts
-        } else {
-          console.warn('WiFi status check failed on host', h, response.status);
-          let statusMsg = `WiFi status check failed on: ${h} (Status: ${response.status})`;
-          if (response.status === 404) {
-            statusMsg = `WiFi status check failed on: ${h} (Endpoint not found - check device firmware)`;
-          } else if (response.status === 500) {
-            statusMsg = `WiFi status check failed on: ${h} (Device internal error)`;
-          } else if (response.status === 0) {
-            statusMsg = `WiFi status check failed on: ${h} (Network error - device may be offline)`;
-          }
-          document.getElementById('connectionStatus').textContent = statusMsg;
-        }
-      } catch(e) { 
-        console.warn('Exception during WiFi status check on host', h, e);
-        let errorMsg = `Exception checking WiFi status on: ${h} (${e.message})`;
-        if (e.message.includes('NAME_NOT_RESOLVED')) {
-          errorMsg = `Device not found: ${h} (Check if device is powered on and on same network)`;
-        } else if (e.message.includes('CONNECTION_TIMED_OUT')) {
-          errorMsg = `Connection timed out: ${h} (Device may be offline or unreachable)`;
-        } else if (e.message.includes('NETWORK_ERROR')) {
-          errorMsg = `Network error: Unable to reach ${h} (Check network connectivity)`;
-        }
-        document.getElementById('connectionStatus').textContent = errorMsg;
-      }
-    }
-  } catch(e) { 
-    console.warn('WiFi status check failed', e); 
-    document.getElementById('connectionStatus').textContent = `WiFi status check failed: ${e.message}`;
-  }
-
-  // 3) try AP fallback
-  try {
-    console.debug('Trying AP host', AP_HOST);
-    document.getElementById('connectionStatus').textContent = `Trying AP host: ${AP_HOST}...`;
-    const r3 = await tryWsHost(AP_HOST, 5000);
-    if (r3.ok) { 
-      console.log('Successfully connected to AP host', AP_HOST);
-      document.getElementById('connectionStatus').textContent = `Connected to AP host: ${AP_HOST}`;
-      useSocket(r3.ws, AP_HOST); 
-      return true; 
-    } else {
-      console.warn('Failed to connect to AP host', AP_HOST);
-      document.getElementById('connectionStatus').textContent = `Failed to connect to AP host: ${AP_HOST}`;
-    }
-  } catch(e){ 
-    console.warn('AP connection failed', e);
-    document.getElementById('connectionStatus').textContent = `AP connection failed: ${e.message}`;
-  }
-
-  console.warn('All WS attempts failed');
-      
-  // Update UI to show failed connection with helpful message
   wifiBtn.classList.remove('connecting');
   wifiBtn.classList.add('disconnected');
-  document.getElementById('wifiStatusText').textContent = 'Not connected';
-  document.getElementById('connectionStatus').textContent = 'Connection failed: Check if device is powered on and on same network';
+  document.getElementById('wifiStatusText').textContent = 'Blynk-only Mode';
+  document.getElementById('connectionStatus').textContent = 'Device controlled via Blynk cloud';
+
+
+
+
+
+
+
+  // Show the Blynk-only mode modal
+  $('#wifiModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  
+  console.log('Blynk-only mode: No local connection attempts made');
+  
+  return false;
       
-  // Send notification to Blynk
-  if (blynkConnected) {
-    sendBlynkNotification('Connection Failed', 'Unable to connect to SmartLight device');
-    sendBlynkEmail('SmartLight Connection Alert', 'The SmartLight device failed to connect. Please check if the device is powered on and connected to the same network.');
-  }
-      
-  // Show troubleshooting tips in mobile notification
-  showMobileNotification('Connection Failed', 
-    'Unable to connect to SmartLight device.\n\nTroubleshooting tips:\n\n' +
-    '1. Ensure your SmartLight device is powered on\n' +
-    '2. Check that your device is connected to the same network as this computer\n' +
-    '3. If using mDNS, ensure your network supports mDNS (smartlight.local)\n' +
-    '4. Try accessing the device directly at 192.168.4.1 when in AP mode\n' +
-    '5. If accessing from HTTPS (GitHub Pages), your device must support WSS (WebSocket Secure)');
+
   
   // Retry connection periodically if not connected
   setTimeout(() => {
@@ -2521,6 +2615,7 @@ function handleWsMessage(raw) {
 
 // Function to update notification modal with current status
 function updateNotificationModal() {
+  console.log('updateNotificationModal called');
   // Update connection status
   const connectionStatusElement = document.getElementById('connectionStatusDetail');
   if (blynkConnected) {
@@ -2558,75 +2653,22 @@ function updateNotificationModal() {
     li.textContent = logEntry;
     recentEventsElement.appendChild(li);
   });
-}// fetch helper that tries hosts (mDNS -> AP)
-async function tryFetchAny(path, opts) {
-  const hosts = [MDNS_HOST, AP_HOST];
-  for (const h of hosts) {
-    try {
-      // Use https:// if page is loaded over HTTPS, otherwise http://
-      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-      const url = `${protocol}//${h}${path}`;
-      
-      // Add API token to headers if we have one
-      const fetchOpts = opts || {};
-      fetchOpts.headers = fetchOpts.headers || {};
-      
-      if (apiToken) {
-        fetchOpts.headers['Authorization'] = `Bearer ${apiToken}`;
-      }
-      
-      const r = await fetch(url, fetchOpts);
-      if (r.ok) {
-        try { return await r.json(); } catch(e) { return {}; }
-      }
-    } catch(e) { /* try next */ }
-  }
-  return null; // Return null instead of throwing error
 }
 
-// Public helper used by UI code: send toggle using WS, fallback to /api (if needed)
+// In Blynk-only mode, we don't attempt local fetch requests
+async function tryFetchAny(path, opts) {
+  console.log('Local fetch requests disabled in Blynk-only mode');
+  return null;
+}
+
+// Public helper used by UI code: send toggle using Blynk only
 function sendToggleWS(id) {
-  // Send toggle command via WebSocket if connected
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({cmd: 'toggle', id: id}));
+  // In Blynk-only mode, we only send commands via Blynk
+  if (blynkConnected) {
+    // Send command via Blynk virtual pin
+    sendToBlynk(`V${id}`, '1');
   } else {
-    // Fallback to REST API if WebSocket is not available
-    // Try mDNS host first
-    // Use https:// if page is loaded over HTTPS, otherwise http://
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    
-    // Prepare headers with API token if available
-    const headers = {'Content-Type': 'application/json'};
-    if (apiToken) {
-      headers['Authorization'] = `Bearer ${apiToken}`;
-    }
-    
-    fetch(`${protocol}//${MDNS_HOST}/api/toggle`, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify({id: id})
-    }).catch(e => {
-      console.warn('Failed to send toggle via REST API to mDNS host', e);
-      // Try AP host as fallback
-      // Use https:// if page is loaded over HTTPS, otherwise http://
-      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-      
-      // Prepare headers with API token if available
-      const headers = {'Content-Type': 'application/json'};
-      if (apiToken) {
-        headers['Authorization'] = `Bearer ${apiToken}`;
-      }
-      
-      fetch(`${protocol}//${AP_HOST}/api/toggle`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({id: id})
-      }).catch(e => {
-        console.warn('Failed to send toggle via REST API to AP host', e);
-        // Show error to user if both methods fail
-        showMobileNotification('Error', 'Failed to send command to device. Please check your connection.');
-      });
-    });
+    console.warn('Cannot send toggle command: Blynk not connected');
   }
 }
 
