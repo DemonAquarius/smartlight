@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>SmartSwitch — Final UI (v9/v10/v25)</title>
+<title>SmartSwitch </title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💡</text></svg>">
 <style>
@@ -2174,13 +2174,13 @@ window.addEventListener('DOMContentLoaded', function() {
 // UI HEARTBEAT → Notifies Blynk UI is active
 setInterval(() => {
     if (blynkConnected) {
-        sendToBlynk("V10", 1);  // UI ONLINE
+        sendToBlynk("V8", 1);  // UI HEARTBEAT → V8
     }
 }, 8000);
 
 // When closing page, send UI OFFLINE
 window.addEventListener("beforeunload", () => {
-    if (blynkConnected) sendToBlynk("V10", 0);
+    if (blynkConnected) sendToBlynk("V8", 0);  // UI heartbeat OFF
 });
 
 /* ---------- Close tags ---------- */
