@@ -1054,6 +1054,8 @@ function defaultState(){
     espIp: "—",
     espUptime: "—",
     espLastSeen: null,
+    // Track if token has been determined to be invalid to avoid spamming requests
+    tokenInvalid: false,
   };
 }
 let state = (()=>{ try{ const r = localStorage.getItem(STORAGE); return r? JSON.parse(r): defaultState(); }catch(e){ return defaultState(); } })();
@@ -1455,212 +1457,287 @@ $('#autoOffTimeout')?.addEventListener('change', () => {
   log('Auto-off timeout set: ' + state.autoOffTimeout + 's');
 });
 
-/* ---------- BLYNK & CONNECTION LOGIC ---------- */
+/* ===== BLYNK REST (replace WebSocket logic) =====
 
-// Blynk integration
-let blynkWebSocket = null;
+   Drop-in replacement: initBlynk, disconnectBlynk, sendToBlynk, poll loop
+
+*/
+
 let blynkConnected = false;
 let blynkToken = '';
-let socket = null;         // local ESP socket (if used)
-let socketReady = false;   // true if local ESP socket open
+let blynkPollInterval = null;
+const BLYNK_API_BASE = 'https://blynk.cloud/external/api';
 
-// helper: update V9 (ESP status) and V10 (UI/Blynk connection) to Blynk
-function updateConnectionPins() {
-  // V9 = ESP (socketReady)
-  if (blynkConnected) sendToBlynk('V9', socketReady ? 1 : 0);
-  // V10 = UI (web) connection to Blynk
-  if (blynkConnected) sendToBlynk('V10', blynkConnected ? 1 : 0);
+function setBlynkUIConnected(yes) {
+  blynkConnected = !!yes;
+  const statusEl = document.getElementById('blynkStatus');
+  if (statusEl) {
+    statusEl.textContent = yes ? 'Connected to Blynk (REST)' : 'Disconnected from Blynk';
+    statusEl.style.color = yes ? '#4ef0a0' : '#ff9a9a';
+  }
 }
 
-// ensure updateConnectionPins runs periodically
-setInterval(() => {
-  if (blynkConnected) updateConnectionPins();
-}, 20000); // every 20s
-
-function tryConnectWebSocket() {
-  const wifiBtn = document.getElementById('wifiBtn');
-  wifiBtn.classList.remove('connecting');
-  wifiBtn.classList.add('disconnected');
-  document.getElementById('wifiStatusText').textContent = 'Blynk-only Mode';
-  document.getElementById('connectionStatus').textContent = 'Device controlled via Blynk cloud';
-  $('#wifiModal').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-  console.log('Blynk-only mode: No local connection attempts made');
-  return false;
-}
-
+// Initialize Blynk REST usage with token
 function initBlynk(token) {
   if (!token) return;
   blynkToken = token;
-  const blynkServer = 'wss://blynk.cloud';
-  const blynkUrl = `${blynkServer}/websocket/${token}`;
-  if (blynkWebSocket) { try { blynkWebSocket.close(); } catch (e) { console.warn('Error closing existing Blynk connection:', e); } }
-  try {
-    blynkWebSocket = new WebSocket(blynkUrl);
-    blynkWebSocket.onopen = function(event) {
-      blynkConnected = true;
-      document.getElementById('blynkStatus').textContent = 'Connected to Blynk';
-      document.getElementById('blynkStatus').style.color = '#4ef0a0';
-      showPopupNotification('Blynk Connected', 'Successfully connected to Blynk cloud service');
-      const hardcodedToken = '4uYijCw6szawn3uskltxhM3Qr-U_Pgvg';
-      let showWelcome = false;
-      if (blynkToken === hardcodedToken) showWelcome = true;
-      setTimeout(() => { if (blynkConnected) { sendToBlynk('V13', 'SmartLight Controller'); sendToBlynk('V14', '1.0'); if (showWelcome) sendBlynkNotification('Welcome!', 'Connected to SmartLight controller'); } }, 1000);
-      if (socketReady) { sendToBlynk('V12', 1); updateBlynkLightsState(); }
-      const pingInterval = setInterval(() => { if (blynkWebSocket && blynkWebSocket.readyState === WebSocket.OPEN) blynkWebSocket.send('ping'); }, 30000);
-      blynkWebSocket.pingInterval = pingInterval;
-      const syncInterval = setInterval(() => { if (blynkConnected) blynkWebSocket.send(JSON.stringify({type: 'sync'})); }, 300000);
-      blynkWebSocket.syncInterval = syncInterval;
-      getApiToken();
-    };
-    blynkWebSocket.onmessage = function(event) { console.log('Blynk message received:', event.data); handleBlynkMessage(event.data); };
-    blynkWebSocket.onclose = function(event) {
-      blynkConnected = false;
-      document.getElementById('blynkStatus').textContent = 'Disconnected from Blynk';
-      document.getElementById('blynkStatus').style.color = '#ff9a9a';
-      showPopupNotification('Blynk Disconnected', 'Lost connection to Blynk cloud service');
-      if (blynkWebSocket) { if (blynkWebSocket.pingInterval) clearInterval(blynkWebSocket.pingInterval); if (blynkWebSocket.syncInterval) clearInterval(blynkWebSocket.syncInterval); }
-      setTimeout(() => { if (blynkToken) initBlynk(blynkToken); }, 5000);
-    };
-    blynkWebSocket.onerror = function(error) { document.getElementById('blynkStatus').textContent = 'Blynk connection error'; document.getElementById('blynkStatus').style.color = '#ff9a9a'; console.error('Blynk WebSocket error:', error); };
-  } catch (e) {
-    document.getElementById('blynkStatus').textContent = 'Blynk initialization failed'; document.getElementById('blynkStatus').style.color = '#ff9a9a'; console.error('Failed to initialize Blynk connection:', e);
+  
+  // Reset token invalid flag when trying a new token
+  state.tokenInvalid = false;
+  
+  // Validate token format
+  if (token.length !== 32 || !/^[a-zA-Z0-9_-]+$/.test(token)) {
+    console.warn('Invalid Blynk token format');
+    showPopupNotification('Blynk Error', 'Invalid token format. Token should be 32 characters.');
+    return;
   }
+  
+  // Save encrypted token as before (keeps compatibility)
+  try {
+    const deviceKey = SecurityModule.generateDeviceKey();
+    localStorage.setItem('blynkToken', SecurityModule.encrypt(token, deviceKey));
+  } catch (e) { console.warn('token save failed', e); }
+
+  // Test token with a simple request
+  getBlynkPin('V0').then(() => {
+    // mark UI connected (we consider REST available if token provided)
+    setBlynkUIConnected(true);
+    showPopupNotification('Blynk', 'Using Blynk REST API (token loaded)');
+    // start polling device/cloud pins
+    startBlynkPoll();
+  }).catch(err => {
+    console.warn('Token validation failed:', err);
+    showPopupNotification('Blynk Error', 'Token validation failed. Check token and network connection.');
+    setBlynkUIConnected(false);
+  });
 }
 
+// Graceful disconnect (stop poll, clear token optionally)
 function disconnectBlynk() {
-  const hardcodedToken = '4uYijCw6szawn3uskltxhM3Qr-U_Pgvg';
-  const deviceKey = SecurityModule.generateDeviceKey();
-  const savedEncryptedToken = localStorage.getItem('blynkToken');
-  const savedToken = savedEncryptedToken ? SecurityModule.decrypt(savedEncryptedToken, deviceKey) : '';
-  if (savedToken === hardcodedToken) {
-    if (blynkWebSocket) {
-      if (blynkWebSocket.pingInterval) { clearInterval(blynkWebSocket.pingInterval); }
-      if (blynkWebSocket.syncInterval) { clearInterval(blynkWebSocket.syncInterval); }
-      blynkWebSocket.close(); blynkWebSocket = null;
-    }
-    blynkConnected = false;
-    blynkToken = '';
-    document.getElementById('blynkStatus').textContent = 'Disconnected';
-    document.getElementById('blynkStatus').style.color = '#ff9a9a';
-    console.log('Disconnected from Blynk but kept hardcoded token');
-  } else {
-    if (blynkWebSocket) { if (blynkWebSocket.pingInterval) { clearInterval(blynkWebSocket.pingInterval); } if (blynkWebSocket.syncInterval) { clearInterval(blynkWebSocket.syncInterval); } blynkWebSocket.close(); blynkWebSocket = null; }
-    blynkConnected = false;
-    blynkToken = '';
-    localStorage.removeItem('blynkToken');
-    localStorage.removeItem('blynkHardcodedToken');
-    document.getElementById('blynkTokenInput').value = '';
-    document.getElementById('blynkStatus').textContent = 'Disconnected';
-    document.getElementById('blynkStatus').style.color = '#ff9a9a';
-    console.log('Disconnected from Blynk and cleared token');
-  }
+  if (blynkPollInterval) { clearInterval(blynkPollInterval); blynkPollInterval = null; }
+  blynkToken = '';
+  setBlynkUIConnected(false);
+  localStorage.removeItem('blynkToken');
+  document.getElementById('blynkTokenInput').value = '';
+  showPopupNotification('Blynk', 'Disconnected (REST)');
+  // Reset token invalid flag
+  state.tokenInvalid = false;
 }
 
-/* handleBlynkMessage kept (no change) */
-function handleBlynkMessage(data) {
-  try {
-    const message = JSON.parse(data);
-    if (message.type === 'write') {
-      const pin = message.pin;
-      const value = message.value;
-      if (pin.startsWith('V')) {
-        const pinNumber = parseInt(pin.substring(1));
-        if (pinNumber >= 0 && pinNumber <= 7) {
-          if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ cmd: 'toggle', id: pinNumber, state: value == 1 ? true : false }));
-          } else {
-            // update local UI if device not connected (for Blynk-only UI behavior)
-            const light = state.lights[pinNumber];
-            if (light) {
-              light.on = !!value;
-              saveState();
-              renderLights();
-            }
-          }
-        } else if (pinNumber === 10) {
-          // presence value from Blynk
-        } else if (pinNumber === 20) {
-          switch (parseInt(value)) {
-            case 1: state.lights.forEach(l => l.on = true); saveState(); renderLights(); break;
-            case 2: applyMode('projector'); break;
-            case 3: applyMode('energy'); break;
-          }
-        } else if (pinNumber === 9) {
-            state.espOnline = (parseInt(value) === 1);
-            state.espLastSeen = Date.now();
-            updateNotificationModal();
-        } else if (pinNumber === 26) {
-            state.espIp = value;
-            updateNotificationModal();
-        } else if (pinNumber === 27) {
-            state.espUptime = value;
-            updateNotificationModal();
-        } else if (pinNumber === 25) {
-            const cmd = String(value).trim().toLowerCase();
+// Send to Blynk via REST update endpoint
+// pin format: 'V0' or 'V25' etc. value can be number or string
+function sendToBlynk(pin, value) {
+  if (!blynkToken) {
+    console.warn('No Blynk token — cannot send', pin, value);
+    return Promise.reject(new Error('No token'));
+  }
 
-            if (cmd === "lights on") {
-                state.lights.forEach(l => l.on = true);
-                renderLights();
-                log("Terminal: All lights turned ON");
-            } else if (cmd === "lights off") {
-                state.lights.forEach(l => l.on = false);
-                renderLights();
-                log("Terminal: All lights turned OFF");
-            } else {
-                log("Terminal Command: " + cmd);
-            }
-        } else if (pinNumber === 30) {
-          // V30/V31 may be used by device for receiving SSID/PASS
-        } else if (pinNumber === 33) {
-          // V33 presence timeout value could come from Blynk
-          state.autoOffTimeout = parseInt(value) || state.autoOffTimeout;
-          saveState();
-          $('#autoOffTimeout').value = state.autoOffTimeout;
+  // build URL like: /external/api/update?token=TOKEN&V0=1
+  const url = `${BLYNK_API_BASE}/update?token=${encodeURIComponent(blynkToken)}&${encodeURIComponent(pin)}=${encodeURIComponent(String(value))}`;
+  return fetch(url, { method: 'GET' })
+    .then(resp => {
+      if (!resp.ok) {
+        if (resp.status === 400) {
+          // Mark token as potentially invalid to avoid spamming requests
+          state.tokenInvalid = true;
+          throw new Error(`HTTP ${resp.status} - Bad Request. Pin ${pin} may not exist or token is invalid.`);
+        } else if (resp.status === 401) {
+          // Mark token as invalid
+          state.tokenInvalid = true;
+          throw new Error(`HTTP ${resp.status} - Unauthorized. Invalid token.`);
+        } else {
+          throw new Error(`HTTP ${resp.status}`);
         }
       }
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ cmd: 'blynkWrite', pin: pin, value: value }));
-      }
-    } else if (message.type === 'sync') {
-      updateBlynkLightsState();
-      const currentMode = state.lights.every(l => l.on) ? 'teaching' : state.modeProjector.some((on, i) => on && state.lights[i].on) ? 'projector' : 'energy';
-      updateBlynkModeIndicator(currentMode);
-      sendToBlynk('V10', state.presence ? 1 : 0);
-      sendToBlynk('V12', socketReady ? 1 : 0);
-    } else if (message.type === 'hardwareInfo') {
-      if (blynkWebSocket && blynkWebSocket.readyState === WebSocket.OPEN) {
-        const info = { type: 'hardwareInfo', board: 'Web Browser', cpu: navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} cores` : 'Unknown', version: '1.0.0', profile: 'SmartLight Controller' };
-        blynkWebSocket.send(JSON.stringify(info));
-      }
-    } else if (message.type === 'appInfo') {
-      if (blynkWebSocket && blynkWebSocket.readyState === WebSocket.OPEN) {
-        const info = { type: 'appInfo', name: 'SmartLight Web Controller', version: '1.0.0', platform: navigator.platform, userAgent: navigator.userAgent };
-        blynkWebSocket.send(JSON.stringify(info));
-      }
-    } else if (message.type === 'time') {
-      if (blynkWebSocket && blynkWebSocket.readyState === WebSocket.OPEN) {
-        const timeInfo = { type: 'time', tzName: Intl.DateTimeFormat().resolvedOptions().timeZone, tzOffset: new Date().getTimezoneOffset(), time: Date.now() };
-        blynkWebSocket.send(JSON.stringify(timeInfo));
-      }
-    } else if (message.type === 'location') {
-      if (blynkWebSocket && blynkWebSocket.readyState === WebSocket.OPEN) {
-        const locationInfo = { type: 'location', lat: 0.0, lon: 0.0, hae: 0.0, ver: 0.0, latExit: 0.0, lonExit: 0.0, haeExit: 0.0 };
-        blynkWebSocket.send(JSON.stringify(locationInfo));
-      }
-    } else if (message.type === 'disconnect') {
-      disconnectBlynk();
-    } else if (message.type === 'pong') {
-      // pong
-    } else if (message.type === 'internal') {
-      console.log('Blynk internal message:', message.data);
-    } else if (message.type === 'json') {
-      try { const jsonData = JSON.parse(message.data); console.log('Blynk JSON message:', jsonData); } catch (e) { console.warn('Failed to parse Blynk JSON message:', e); }
-    }
-  } catch (e) {
-    console.warn('Failed to parse Blynk message:', e);
-  }
+      // Blynk returns "OK" text for update endpoint typically
+      console.log('Blynk update OK', pin, value);
+      return resp.text();
+    })
+    .catch(err => {
+      console.warn('Blynk REST send failed', err);
+      setBlynkUIConnected(false);
+      return Promise.reject(err);
+    });
 }
+
+// Read one pin using REST get endpoint.
+// Some Blynk servers return plain value or JSON array; handle both.
+function getBlynkPin(pin) {
+  if (!blynkToken) return Promise.reject(new Error('No token'));
+  // Correct Blynk REST API format for get: /get?token=TOKEN&pin=V0
+  const url = `${BLYNK_API_BASE}/get?token=${encodeURIComponent(blynkToken)}&pin=${encodeURIComponent(pin)}`;
+  return fetch(url, { method: 'GET' })
+    .then(resp => {
+      if (!resp.ok) {
+        if (resp.status === 400) {
+          // Mark token as potentially invalid to avoid spamming requests
+          state.tokenInvalid = true;
+          throw new Error(`HTTP ${resp.status} - Bad Request. Pin ${pin} may not exist or token is invalid.`);
+        } else if (resp.status === 401) {
+          // Mark token as invalid
+          state.tokenInvalid = true;
+          throw new Error(`HTTP ${resp.status} - Unauthorized. Invalid token.`);
+        } else {
+          throw new Error(`HTTP ${resp.status}`);
+        }
+      }
+      return resp.text();
+    })
+    .then(txt => {
+      // try to parse JSON if possible, otherwise return raw trimmed text
+      try {
+        // some Blynk variants return '["value"]' — try JSON parse
+        const parsed = JSON.parse(txt);
+        if (Array.isArray(parsed) && parsed.length) return parsed[0];
+        return parsed;
+      } catch (e) {
+        return txt.trim();
+      }
+    })
+    .catch(err => {
+      console.warn('Blynk REST get failed', pin, err);
+      // Don't disconnect the entire UI for individual pin failures
+      // Just return null to indicate the pin couldn't be read
+      return Promise.resolve(null);
+    });
+}
+
+// Poll a set of important pins and update UI/state
+function pollBlynkPinsOnce() {
+  if (!blynkToken) return;
+  
+  // Validate token format before polling
+  if (blynkToken.length !== 32 || !/^[a-zA-Z0-9_-]+$/.test(blynkToken)) {
+    console.warn('Invalid Blynk token format, skipping poll');
+    return;
+  }
+  
+  // Check if we've already determined the token is invalid to avoid spamming requests
+  if (state.tokenInvalid) {
+    console.warn('Skipping poll due to previously invalid token');
+    return;
+  }
+  // pins to poll: V0..V7 (lights), V8 (UI heartbeat), V9 (ESP status), V10 (presence), V11 (pir), V12(rcwl), V33(auto-off)
+  const pins = ['V0','V1','V2','V3','V4','V5','V6','V7','V8','V9','V10','V11','V12','V33','V25'];
+  // poll sequentially (simple) — could be parallel but keep simple for reliability
+  pins.reduce((p, pin) => {
+    return p.then(() => getBlynkPin(pin)
+      .then(val => {
+        // If val is null, the pin couldn't be read, so skip processing
+        if (val === undefined || val === null) return;
+        // process result by pin
+        const n = pin.replace(/^V/, '');
+        const pinNum = parseInt(n);
+        if (!isNaN(pinNum) && pinNum >=0 && pinNum <=7) {
+          // light state: numeric 0/1
+          const v = (String(val).trim() === '1' || String(val).toLowerCase()==='true');
+          state.lights[pinNum].on = v;
+        } else if (pin === 'V8') {
+          // UI heartbeat (not used much)
+        } else if (pin === 'V9') {
+          // device status string - update display
+          const el = document.getElementById('espStatusText');
+          if (el) el.textContent = String(val).slice(0,80);
+        } else if (pin === 'V10') {
+          const pval = (String(val).trim() === '1' || String(val).toLowerCase()==='true');
+          handlePresenceChange(pval); // reuse existing handler
+        } else if (pin === 'V11') {
+          state.pir = (String(val).trim() === '1' || String(val).toLowerCase()==='true');
+          $('#pirToggle').checked = !!state.pir;
+        } else if (pin === 'V12') {
+          state.rcwl = (String(val).trim() === '1' || String(val).toLowerCase()==='true');
+          $('#rcwlToggle').checked = !!state.rcwl;
+        } else if (pin === 'V33') {
+          state.autoOffTimeout = parseInt(val) || state.autoOffTimeout;
+          if ($('#autoOffTimeout')) $('#autoOffTimeout').value = state.autoOffTimeout;
+        } else if (pin === 'V25') {
+          // terminal text from device: append
+          const txt = String(val);
+          if (txt && txt.length) appendTerminalLine(`<device> ${txt}`);
+        }
+      })
+      .catch(()=>{/* ignore pin read failure for single pin */})
+    );
+  }, Promise.resolve())
+  .then(() => {
+    // after polling all pins, render lights
+    renderLights();
+    setBlynkUIConnected(true);
+  })
+  .catch(err => {
+    console.warn('Polling sequence error', err);
+  });
+}
+
+// Start poller
+function startBlynkPoll() {
+  // immediately poll once
+  pollBlynkPinsOnce();
+  // then periodic poll (6s)
+  if (blynkPollInterval) clearInterval(blynkPollInterval);
+  blynkPollInterval = setInterval(pollBlynkPinsOnce, 6000);
+}
+
+// Stop poller (used by disconnect)
+function stopBlynkPoll() {
+  if (blynkPollInterval) { clearInterval(blynkPollInterval); blynkPollInterval = null; }
+}
+
+// Hook into existing connect/disconnect buttons
+// (this keeps your UI button logic unchanged)
+document.getElementById('blynkConnectBtn')?.addEventListener('click', function() {
+  addButtonAnimation('blynkConnectBtn');
+  const token = $('#blynkTokenInput').value.trim() || (function(){
+    // fallback to preloaded token (hardcoded template token in UI)
+    return 'GO_I2vtWFmQbPclq0JU7Wy5CWA9aXtsO';
+  })();
+  if (!token) { showMobileNotification('Error','Blynk token required'); return; }
+  initBlynk(token);
+});
+
+document.getElementById('blynkDisconnectBtn')?.addEventListener('click', function() {
+  addButtonAnimation('blynkDisconnectBtn');
+  disconnectBlynk();
+});
+
+// Replace previous UI-heartbeat sender: use REST
+setInterval(() => {
+  if (blynkConnected && blynkToken) {
+    // write UI heartbeat V8 and presence V10 when presence changes elsewhere
+    sendToBlynk('V8', 1).catch(()=>{});
+  }
+}, 8000);
+
+// When page closes, send UI offline (best-effort)
+window.addEventListener("beforeunload", () => {
+  if (blynkConnected && blynkToken) {
+    // best-effort; fire-and-forget
+    navigator.sendBeacon(`${BLYNK_API_BASE}/update?token=${encodeURIComponent(blynkToken)}&V8=0`);
+  }
+});
+
+// Disable old tryConnectWebSocket / mDNS code — comment out calls to it
+// If you had a tryConnectWebSocket() invocation earlier, remove it or replace with initBlynk(savedToken) as below:
+
+// on load: auto-init from saved token (if present)
+(function autoInitSavedToken(){
+  try {
+    const enc = localStorage.getItem('blynkToken');
+    if (enc) {
+      const token = SecurityModule.decrypt(enc, SecurityModule.generateDeviceKey());
+      if (token) {
+        $('#blynkTokenInput').value = token;
+        initBlynk(token);
+      }
+    } else {
+      // fallback to template token (predefined)
+      const fallback = 'GO_I2vtWFmQbPclq0JU7Wy5CWA9aXtsO';
+      $('#blynkTokenInput').value = fallback;
+      // you can automatically init with fallback if you want:
+      // initBlynk(fallback);
+    }
+  } catch(e) { console.warn('auto token init failed', e); }
+})();
 
 // helper: append terminal lines
 function appendTerminalLine(line) {
@@ -1694,39 +1771,26 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-/* sendToBlynk & helper functions (kept) */
-function sendToBlynk(pin, value) {
-  if (blynkWebSocket && blynkWebSocket.readyState === WebSocket.OPEN) {
-    const message = { type: 'write', pin: pin, value: value };
-    blynkWebSocket.send(JSON.stringify(message));
-  } else {
-    console.warn('Blynk not connected — cannot send', pin, value);
-  }
-}
 function sendBlynkNotification(title, message) {
-  if (blynkWebSocket && blynkWebSocket.readyState === WebSocket.OPEN) {
-    const notification = { type: 'notify', title: title, message: message };
-    blynkWebSocket.send(JSON.stringify(notification));
-  }
+  // For REST implementation, we can't send notifications to the device
+  // But we can show them in the UI
+  showPopupNotification(title, message);
 }
-function sendBlynkEmail(subject, message) {
-  if (blynkWebSocket && blynkWebSocket.readyState === WebSocket.OPEN) {
-    const email = { type: 'email', subject: subject, message: message };
-    blynkWebSocket.send(JSON.stringify(email));
-  }
-}
+
 function setBlynkProperty(pin, property, value) {
-  if (blynkWebSocket && blynkWebSocket.readyState === WebSocket.OPEN) {
-    const message = { type: 'property', pin: pin, property: property, value: value };
-    blynkWebSocket.send(JSON.stringify(message));
-  }
+  // For REST implementation, we can't set properties
+  // This is a no-op in REST mode
+  console.log(`Setting property ${property} of pin ${pin} to ${value} (not supported in REST mode)`);
 }
+
 function updateBlynkLightsState() {
   state.lights.forEach((light, index) => {
-    sendToBlynk(`V${index}`, light.on ? 1 : 0);
-    setBlynkProperty(`V${index}`, 'label', light.name);
+    if (blynkConnected) {
+      sendToBlynk(`V${index}`, light.on ? 1 : 0);
+    }
   });
 }
+
 function updateBlynkModeIndicator(mode) {
   let modeValue = 0;
   switch(mode) {
@@ -1734,52 +1798,32 @@ function updateBlynkModeIndicator(mode) {
     case 'projector': modeValue = 2; break;
     case 'energy': modeValue = 3; break;
   }
-  sendToBlynk('V20', modeValue);
+  if (blynkConnected) {
+    sendToBlynk('V20', modeValue);
+  }
   const modeNames = {teaching: 'Teaching Mode', projector: 'Projector Mode', energy: 'Energy Saver'};
-  setBlynkProperty('V20', 'label', modeNames[mode] || 'Unknown Mode');
+  // We can't set labels in REST mode, but we can log for debugging
+  console.log(`Mode indicator set to ${modeNames[mode] || 'Unknown Mode'}`);
 }
-
-
 
 // When local socket (ESP) connects or disconnects, update V9 (esp status) and UI
 function onEspConnected(info) {
-  socketReady = true;
-  if (info && info.ip) state.lastESPInfo.ip = info.ip;
-  document.getElementById('espStatus').textContent = `Online (${state.lastESPInfo.ip || 'unknown IP'})`;
-  document.getElementById('wifiBtn').classList.add('connected');
-  document.getElementById('wifiBtn').classList.remove('disconnected');
-  document.getElementById('connectionStatus').textContent = `Connected to ${state.lastESPInfo.ip || 'ESP'}`;
-  updateConnectionPins();
-  if (blynkConnected) sendBlynkNotification('ESP Connected', `ESP connected: ${state.lastESPInfo.ip || 'unknown'}`);
+  // In REST mode, we don't have local socket connections
+  // This function is kept for compatibility but won't be called
+  console.log('onEspConnected called (REST mode - no local socket)');
 }
 
 function onEspDisconnected() {
-  socketReady = false;
-  document.getElementById('espStatus').textContent = 'Offline';
-  document.getElementById('wifiBtn').classList.remove('connected');
-  document.getElementById('wifiBtn').classList.add('disconnected');
-  document.getElementById('connectionStatus').textContent = 'Disconnected';
-  updateConnectionPins();
-  if (blynkConnected) sendBlynkNotification('ESP Disconnected', 'ESP went offline');
+  // In REST mode, we don't have local socket connections
+  // This function is kept for compatibility but won't be called
+  console.log('onEspDisconnected called (REST mode - no local socket)');
 }
 
 /* ---------- Local socket code (if you ever want local connection) ---------- */
 // In Blynk-only mode this is a no-op; but keep helpers so V9 updates work if you enable local socket
 function useSocket(ws, host) {
-  if (socket) {
-    try { socket.close(); } catch(e){}
-  }
-  socket = ws;
-  socketReady = true;
-  state.lastESPInfo.ip = host || state.lastESPInfo.ip;
-  onEspConnected({ ip: state.lastESPInfo.ip });
-  socket.onmessage = (ev) => console.log('Local socket message (Blynk-only mode):', ev.data);
-  socket.onclose = () => { socketReady = false; onEspDisconnected(); tryConnectWebSocket(); };
-  socket.onerror = (e) => { socketReady = false; onEspDisconnected(); console.warn('WS error', e); };
-  // request state
-  setTimeout(()=> {
-    try { socket.send(JSON.stringify({cmd:'getState'})); if (blynkConnected) sendToBlynk('V12', 1); } catch(e){}
-  }, 1000);
+  // In REST mode, we don't use local sockets
+  console.log('useSocket called (REST mode - not using local socket)');
 }
 
 /* ---------- Update notification modal function override to include ESP info ---------- */
@@ -1787,7 +1831,7 @@ function updateNotificationModal() {
   // Update connection status
   const connectionStatusElement = document.getElementById('connectionStatusDetail');
   if (blynkConnected) {
-    connectionStatusElement.textContent = 'Connected to Blynk';
+    connectionStatusElement.textContent = 'Connected to Blynk (REST)';
     connectionStatusElement.style.color = '#4ef0a0';
   } else {
     connectionStatusElement.textContent = 'Disconnected from Blynk';
@@ -1816,7 +1860,7 @@ function updateNotificationModal() {
   document.getElementById('rcwlStatus').textContent = state.rcwl ? 'Enabled' : 'Disabled';
   document.getElementById('presenceStatus').textContent = state.presence ? 'Someone detected' : 'No one detected';
   const blynkStatusElement = document.getElementById('blynkIntegrationStatus');
-  if (blynkConnected) { blynkStatusElement.textContent = 'Connected'; blynkStatusElement.style.color = '#4ef0a0'; }
+  if (blynkConnected) { blynkStatusElement.textContent = 'Connected (REST)'; blynkStatusElement.style.color = '#4ef0a0'; }
   else { blynkStatusElement.textContent = 'Not connected'; blynkStatusElement.style.color = '#ff9a9a'; }
 }
 
@@ -1916,8 +1960,7 @@ document.addEventListener('DOMContentLoaded', function() {
   setupModeModal();
 });
 
-// Attempt connect (kept)
-setTimeout(() => { console.log('Attempting to connect to ESP32 device...'); checkMdnsResolution(); tryConnectWebSocket(); }, 5000);
+
 
 // mDNS check kept (uses local /api/wifi/status — harmless if not present)
 async function checkMdnsResolution() {
