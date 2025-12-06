@@ -1434,28 +1434,36 @@ function sendToBlynk(pin, value){
 /* get a single pin (get endpoint) returns resolved value or null on failure */
 function getBlynkPin(pin){
   if (!blynkToken) return Promise.reject(new Error('No token'));
-  const url = `${BLYNK_API_BASE}/get?token=${encodeURIComponent(blynkToken)}&pin=${encodeURIComponent(pin)}`;
-  return fetch(url, { method: 'GET' }).then(resp => {
-    if (!resp.ok) {
-      if (resp.status === 400 || resp.status === 401) {
-        state.tokenInvalid = true;
+
+  // IMPORTANT FIX:
+  // Blynk REST API expects:  .../get?token=xxxx&V0
+  // NOT: ...&pin=V0
+  const url = `${BLYNK_API_BASE}/get?token=${encodeURIComponent(blynkToken)}&${encodeURIComponent(pin)}`;
+
+  return fetch(url, { method: 'GET' })
+    .then(resp => {
+      if (!resp.ok) {
+        if (resp.status === 400 || resp.status === 401) {
+          state.tokenInvalid = true;
+          throw new Error(`HTTP ${resp.status}`);
+        }
         throw new Error(`HTTP ${resp.status}`);
       }
-      throw new Error(`HTTP ${resp.status}`);
-    }
-    return resp.text();
-  }).then(txt => {
-    try {
-      const parsed = JSON.parse(txt);
-      if (Array.isArray(parsed) && parsed.length) return parsed[0];
-      return parsed;
-    } catch(e) {
-      return txt.trim();
-    }
-  }).catch(err => {
-    console.warn('getBlynkPin failed', pin, err);
-    return Promise.resolve(null);
-  });
+      return resp.text();
+    })
+    .then(txt => {
+      try {
+        const parsed = JSON.parse(txt);
+        if (Array.isArray(parsed) && parsed.length) return parsed[0];
+        return parsed;
+      } catch(e) {
+        return txt.trim();
+      }
+    })
+    .catch(err => {
+      console.warn('getBlynkPin failed', pin, err);
+      return Promise.resolve(null);
+    });
 }
 
 /* Poll Blynk pins in sequence */
