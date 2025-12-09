@@ -1,4 +1,4 @@
-# mynew.html - SmartSwitch Web UI
+# https://demonaquarius.github.io/smartlight/ - SmartSwitch Web UI
 
 This is a standalone HTML file that serves as a complete web-based user interface for controlling an ESP32-based smart lighting system. The interface connects to the device through Blynk REST API and provides comprehensive control over lighting, sensors, and device settings.
 
@@ -40,7 +40,7 @@ This is a standalone HTML file that serves as a complete web-based user interfac
 
 ## How to Use
 
-1. Open `mynew.html` in a web browser
+1. Open `https://demonaquarius.github.io/smartlight/` in a web browser
 2. Enter your Blynk authentication token in the Settings > Tools section
 3. Click "Connect" to establish connection with your device
 4. Control lights directly from the Home tab
