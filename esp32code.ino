@@ -28,9 +28,9 @@
 ********************************************************/
 
 #define BLYNK_PRINT Serial
-#define BLYNK_TEMPLATE_ID   "TMPL3BpQ2BPrJ"
+#define BLYNK_TEMPLATE_ID   "your template id"
 #define BLYNK_TEMPLATE_NAME "smartboard"
-#define BLYNK_AUTH_TOKEN    "GO_I2vtWFmQbPclq0JU7Wy5CWA9aXtsO"
+#define BLYNK_AUTH_TOKEN    "your blynk auth token"
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -39,12 +39,12 @@
 #include <time.h>
 
 // ---------------- CONFIG ----------------
-const char* DEFAULT_WIFI_SSID = "vivot3lite";
-const char* DEFAULT_WIFI_PASS = "12345678";
+const char* DEFAULT_WIFI_SSID = "add ssid";
+const char* DEFAULT_WIFI_PASS = "add password";
 
 // NEW SECONDARY WIFI
-const char* WIFI2_SSID = "Airtel_neer_3811";
-const char* WIFI2_PASS = "air56914";
+const char* WIFI2_SSID = "add ssid";
+const char* WIFI2_PASS = "add password";
 
 // Pin Mapping
 const uint8_t RELAY_PINS[8] = {4, 5, 13, 16, 17, 18, 19, 21};
