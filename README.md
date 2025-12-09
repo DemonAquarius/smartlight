@@ -65,7 +65,7 @@ Includes a complete Wi-Fi setup system:
 * Apply selected WiFi to device
 * Set default WiFi
 * Export WiFi JSON
-* Encrypted password storage with XOR + device fingerprint
+
 
 ### 🔔 7. Advanced Notification System
 
@@ -173,7 +173,6 @@ Your firmware must:
 ## 🔒 Security Features
 
 * XOR encrypted Blynk token saved with device fingerprint
-* Wi-Fi passwords stored encrypted
 * No third-party tracking
 * No external scripts except Google Fonts
 
@@ -216,7 +215,8 @@ You can easily modify:
 * Dark/Light theme toggle
 * Cloud backup & restore config
 * QR setup for onboarding (AP, STA modes)
-
+* Wi-Fi passwords stored encrypted
+* Encrypted password storage with XOR + device fingerprint
 ---
 
 ## 🤝 Contributing
